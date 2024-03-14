@@ -1,7 +1,15 @@
 /*-----------------------------------------------------------------
- Copyright (C) 2005 - 2010
-	Michael "Chishm" Chisholm
-	Dave "WinterMute" Murphy
+ fat.h
+ 
+ NDS MP
+ GBAMP NDS Firmware Hack Version 2.12
+ An NDS aware firmware patch for the GBA Movie Player.
+ By Michael Chisholm (Chishm)
+ 
+ Filesystem code based on GBAMP_CF.c by Chishm (me).
+ 
+License:
+ Copyright (C) 2005  Michael "Chishm" Chisholm
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -17,34 +25,22 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+ If you use this code, please give due credit and email me about your
+ project at chishm@hotmail.com
 ------------------------------------------------------------------*/
 
-#ifndef NDS_LOADER_ARM9_H
-#define NDS_LOADER_ARM9_H
+#ifndef FAT_H
+#define FAT_H
 
+#include <nds/ndstypes.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define CLUSTER_FREE	0x00000000
+#define	CLUSTER_EOF		0x0FFFFFFF
+#define CLUSTER_FIRST	0x00000002
 
-typedef enum {
-	RUN_NDS_OK = 0,
-	RUN_NDS_STAT_FAILED,
-	RUN_NDS_GETCWD_FAILED,
-	RUN_NDS_PATCH_DLDI_FAILED,
-} eRunNdsRetCode;
+bool FAT_InitFiles (bool initCard);
+u32 getBootFileCluster (const char* bootName);
+u32 fileRead (char* buffer, u32 cluster, u32 startOffset, u32 length);
+u32 FAT_ClustToSect (u32 cluster);
 
-#define LOAD_DEFAULT_NDS 0
-
-eRunNdsRetCode runNds (const void* loader, u32 loaderSize, u32 cluster, bool initDisc, bool dldiPatchNds, int argc, const char** argv);
-
-eRunNdsRetCode runNdsFile (const char* filename, int argc, const char** argv);
-
-bool installBootStub(bool havedsiSD);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // NDS_LOADER_ARM7_H
-
+#endif // FAT_H

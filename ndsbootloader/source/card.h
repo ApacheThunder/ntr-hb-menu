@@ -1,7 +1,6 @@
 /*-----------------------------------------------------------------
- Copyright (C) 2005 - 2010
-	Michael "Chishm" Chisholm
-	Dave "WinterMute" Murphy
+
+ Copyright (C) 2005  Michael "Chishm" Chisholm
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -17,34 +16,30 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+ If you use this code, please give due credit and email me about your
+ project at chishm@hotmail.com
 ------------------------------------------------------------------*/
 
-#ifndef NDS_LOADER_ARM9_H
-#define NDS_LOADER_ARM9_H
+#ifndef CARD_H
+#define CARD_H
 
+#include "disc_io.h"
+#include "io_dldi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef enum {
-	RUN_NDS_OK = 0,
-	RUN_NDS_STAT_FAILED,
-	RUN_NDS_GETCWD_FAILED,
-	RUN_NDS_PATCH_DLDI_FAILED,
-} eRunNdsRetCode;
-
-#define LOAD_DEFAULT_NDS 0
-
-eRunNdsRetCode runNds (const void* loader, u32 loaderSize, u32 cluster, bool initDisc, bool dldiPatchNds, int argc, const char** argv);
-
-eRunNdsRetCode runNdsFile (const char* filename, int argc, const char** argv);
-
-bool installBootStub(bool havedsiSD);
-
-#ifdef __cplusplus
+static inline bool CARD_StartUp (void) {
+	return _io_dldi.fn_startup();
 }
-#endif
 
-#endif // NDS_LOADER_ARM7_H
+static inline bool CARD_IsInserted (void) {
+	return _io_dldi.fn_isInserted();
+}
 
+static inline bool CARD_ReadSector (u32 sector, void *buffer) {
+	return _io_dldi.fn_readSectors(sector, 1, buffer);
+}
+
+static inline bool CARD_ReadSectors (u32 sector, int count, void *buffer) {
+	return _io_dldi.fn_readSectors(sector, count, buffer);
+}
+
+#endif // CARD_H

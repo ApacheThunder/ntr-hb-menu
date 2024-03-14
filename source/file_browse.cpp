@@ -32,8 +32,8 @@
 
 #include "iconTitle.h"
 
-#define SCREEN_COLS 32
-#define ENTRIES_PER_SCREEN 22
+#define SCREEN_COLS 30
+#define ENTRIES_PER_SCREEN 20
 #define ENTRIES_START_ROW 2
 #define ENTRY_PAGE_LENGTH 10
 
@@ -42,7 +42,7 @@ using namespace std;
 struct DirEntry {
 	string name;
 	bool isDirectory;
-} ;
+};
 
 bool nameEndsWith (const string& name, const vector<string> extensionList) {
 
@@ -59,13 +59,8 @@ bool nameEndsWith (const string& name, const vector<string> extensionList) {
 }
 
 bool dirEntryPredicate (const DirEntry& lhs, const DirEntry& rhs) {
-
-	if (!lhs.isDirectory && rhs.isDirectory) {
-		return false;
-	}
-	if (lhs.isDirectory && !rhs.isDirectory) {
-		return true;
-	}
+	if (!lhs.isDirectory && rhs.isDirectory)return false;
+	if (lhs.isDirectory && !rhs.isDirectory)return true;
 	return strcasecmp(lhs.name.c_str(), rhs.name.c_str()) < 0;
 }
 
@@ -110,12 +105,11 @@ void getDirectoryContents (vector<DirEntry>& dirContents) {
 void showDirectoryContents (const vector<DirEntry>& dirContents, int startRow) {
 	char path[PATH_MAX];
 
-
 	getcwd(path, PATH_MAX);
 
 	// Clear the screen
-	iprintf ("\x1b[2J");
-
+	consoleClear();
+	
 	// Print the path
 	if (strlen(path) < SCREEN_COLS) {
 		iprintf ("%s", path);
@@ -126,7 +120,7 @@ void showDirectoryContents (const vector<DirEntry>& dirContents, int startRow) {
 	// Move to 2nd row
 	iprintf ("\x1b[1;0H");
 	// Print line of dashes
-	iprintf ("--------------------------------");
+	iprintf ("------------------------------");
 
 	// Print directory listing
 	for (int i = 0; i < ((int)dirContents.size() - startRow) && i < ENTRIES_PER_SCREEN; i++) {
@@ -204,7 +198,7 @@ string browseForFile (const vector<string>& extensionList) {
 				showDirectoryContents (dirContents, screenOffset);
 			} else {
 				// Clear the screen
-				iprintf ("\x1b[2J");
+				consoleClear();
 				// Return the chosen file
 				return entry->name;
 			}

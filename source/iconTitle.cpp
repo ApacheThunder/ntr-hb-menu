@@ -30,13 +30,13 @@
 #include "hbmenu_banner.h"
 #include "font6x8.h"
 
-#define TITLE_POS_X	(2*8)
-#define TITLE_POS_Y	(17*8)
+#define TITLE_POS_X	(13*8)
+#define TITLE_POS_Y	(10*8)
 
-#define ICON_POS_X	32
-#define ICON_POS_Y	80
+#define ICON_POS_X	26
+#define ICON_POS_Y	79
 
-#define TEXT_WIDTH	((32-4)*8/6)
+#define TEXT_WIDTH	((22-4)*8/6)
 
 static int bg2, bg3;
 static u16 *sprite;
@@ -86,10 +86,8 @@ void iconTitleInit (void) {
 	videoSetMode(MODE_4_2D);
 
 	// initialize VRAM banks
-	vramSetPrimaryBanks(VRAM_A_MAIN_BG,
-	                    VRAM_B_MAIN_SPRITE,
-	                    VRAM_C_LCD,
-	                    VRAM_D_LCD);
+	vramSetBankA(VRAM_A_MAIN_BG);
+	vramSetBankB(VRAM_B_MAIN_SPRITE);
 
 	// initialize bg2 as a rotation background and bg3 as a bmp background
 	// http://mtheall.com/vram.html#T2=3&RNT2=96&MB2=3&TB2=0&S2=2&T3=6&MB3=1&S3=1
@@ -129,10 +127,7 @@ void iconTitleInit (void) {
 	oamUpdate(&oamMain);
 
 	// everything's ready :)
-	writeRow (0,"...initializing...");
-	writeRow (1,"===>>> HBMenu+ <<<===");
-	writeRow (2,"(this text should disappear...");
-	writeRow (3,"...otherwise, trouble!)");
+	writeRow (1,"===>>> Acekard2i <<<===");
 }
 
 
