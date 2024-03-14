@@ -9,6 +9,13 @@ The bootstrap.cia file can be installed on a 3DS using FBI. This requires boot.n
 
 Place your homebrew games in the /nds folder and have fun.
 
+# Changes from original HBMenu
+This version of nds-hb-menu allows for 32KB DLDI (for support of older flashcarts) and has been enhanced with better UI elements like background gfx for bottom screen console text along with new font.
+
+The new font used in this build of HBMenu is a stripped down version version of Misaki Gothic found in Godmode9i. The original font can be found here:
+
+https://github.com/DS-Homebrew/GodMode9i/tree/master/resources/fonts
+
 ## Passing arguments
 The Homebrew Menu supports passing arguments to launched .nds files via .argv files. The testfiles folder has an nds file which lists arguments and some sample .argv files. These are simple text files which start with the name of the nds file to run and a list of arguments to pass to the application. Here's a quick sample .argv file.
 ```shell
