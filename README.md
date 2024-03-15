@@ -16,6 +16,8 @@ The new font used in this build of HBMenu is a stripped down version version of 
 
 https://github.com/DS-Homebrew/GodMode9i/tree/master/resources/fonts
 
+The new UI is themed off original DS firmware.
+
 ## Passing arguments
 The Homebrew Menu supports passing arguments to launched .nds files via .argv files. The testfiles folder has an nds file which lists arguments and some sample .argv files. These are simple text files which start with the name of the nds file to run and a list of arguments to pass to the application. Here's a quick sample .argv file.
 ```shell

@@ -280,7 +280,6 @@ Modified by Chishm:
  * Removed MultiNDS specific stuff
 --------------------------------------------------------------------------*/
 void startBinary_ARM7 (void) {
-	*((vu8*)0x027FFF70) = 0x91;
 	REG_IME=0;
 	while(REG_VCOUNT!=191);
 	while(REG_VCOUNT==191);

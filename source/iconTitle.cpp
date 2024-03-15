@@ -127,7 +127,7 @@ void iconTitleInit (void) {
 	oamUpdate(&oamMain);
 
 	// everything's ready :)
-	writeRow (1,"===>>> Acekard2i <<<===");
+	writeRow (1,"===>>> HBMenu+ <<<===");
 }
 
 

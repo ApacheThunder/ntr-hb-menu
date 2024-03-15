@@ -64,12 +64,13 @@ int stop(void) {
 	while (1) {
 		swiWaitForVBlank();
 		scanKeys();
-		if (!(keysHeld() & KEY_A))break;
+		if (keysHeld())break;
 	}
 	return 0;
 }
 
 int FileBrowser() {
+	consoleClear();
 	vector<string> extensionList = argsGetExtensionList();
 	chdir("/nds");
 	while(1) {
@@ -98,7 +99,13 @@ int main(int argc, char **argv) {
 	extern u64 *fake_heap_end;
 	*fake_heap_end = 0;
 	InitGUI();
-	if (!fatInitDefault()) { printf ("\n\nFAT init failed!\n");	return stop(); }
-	return FileBrowser();
+	printf ("\n\n\n\n\n\n\n\n\n\n     Initializing FAT ...\n");
+	if (!fatInitDefault()) { 
+		consoleClear();
+		printf ("\n\n\n\n\n\n\n\n\n\n       FAT init failed!       \n");
+		return stop();
+	}
+	FileBrowser();
+	return 0;
 }
 
