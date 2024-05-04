@@ -1,122 +1,40 @@
 #---------------------------------------------------------------------------------
 .SUFFIXES:
 #---------------------------------------------------------------------------------
-.SECONDARY:
-
 ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-include $(DEVKITARM)/ds_rules
+export TARGET := hbmenu
+export TOPDIR := $(CURDIR)
 
 export HBMENU_MAJOR	:= 0
 export HBMENU_MINOR	:= 9
-export HBMENU_PATCH	:= 2
+export HBMENU_PATCH	:= 3
 
 
 VERSION	:=	$(HBMENU_MAJOR).$(HBMENU_MINOR).$(HBMENU_PATCH)
-#---------------------------------------------------------------------------------
-# TARGET is the name of the output
-# BUILD is the directory where object files & intermediate files will be placed
-# SOURCES is a list of directories containing source code
-# INCLUDES is a list of directories containing extra header files
-# DATA is a list of directories containing binary files embedded using bin2o
-# GRAPHICS is a list of directories containing image files to be converted with grit
-#---------------------------------------------------------------------------------
-TARGET		:=	hbmenu
-BUILD		:=	build
-SOURCES		:=	source
-INCLUDES	:=	include
-DATA		:=	data
-GRAPHICS	:=  gfx
+
+# GMAE_ICON is the image used to create the game icon, leave blank to use default rule
+GAME_ICON :=
+
+# specify a directory which contains the nitro filesystem
+# this is relative to the Makefile
+NITRO_FILES :=
+
+# These set the information text in the nds file
+#GAME_TITLE     := My Wonderful Homebrew
+#GAME_SUBTITLE1 := built with devkitARM
+#GAME_SUBTITLE2 := http://devitpro.org
+
+include $(DEVKITARM)/ds_rules
+
+.PHONY: data ndsbootloader bootstub BootStrap exceptionstub clean
 
 #---------------------------------------------------------------------------------
-# options for code generation
+# main targets
 #---------------------------------------------------------------------------------
-ARCH	:=	-mthumb -mthumb-interwork
-
-CFLAGS	:=	-g -Wall -O2 \
-		-ffunction-sections -fdata-sections \
- 		-march=armv5te -mtune=arm946e-s -fomit-frame-pointer\
-		-ffast-math \
-		$(ARCH)
-
-CFLAGS	+=	$(INCLUDE) -DARM9
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions
-
-ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=ds_arm9.specs -g -Wl,--gc-sections $(ARCH) -Wl,-Map,$(notdir $*.map)
-
-#---------------------------------------------------------------------------------
-# any extra libraries we wish to link with the project (order is important)
-#---------------------------------------------------------------------------------
-LIBS	:= 	-lfat -lnds329
-
-
-#---------------------------------------------------------------------------------
-# list of directories containing libraries, this must be the top level containing
-# include and lib
-#---------------------------------------------------------------------------------
-LIBDIRS	:=	$(LIBNDS)
-
-#---------------------------------------------------------------------------------
-# no real need to edit anything past this point unless you need to add additional
-# rules for different file extensions
-#---------------------------------------------------------------------------------
-ifneq ($(BUILD),$(notdir $(CURDIR)))
-#---------------------------------------------------------------------------------
-
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
-
-export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
-					$(foreach dir,$(DATA),$(CURDIR)/$(dir)) \
-					$(foreach dir,$(GRAPHICS),$(CURDIR)/$(dir))
-
-export DEPSDIR	:=	$(CURDIR)/$(BUILD)
-
-CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
-PNGFILES	:=	$(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.png)))
-SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-BINFILES	:=	load.bin bootstub.bin exceptionstub.bin
-
-#---------------------------------------------------------------------------------
-# use CXX for linking C++ projects, CC for standard C
-#---------------------------------------------------------------------------------
-ifeq ($(strip $(CPPFILES)),)
-#---------------------------------------------------------------------------------
-	export LD	:=	$(CC)
-#---------------------------------------------------------------------------------
-else
-#---------------------------------------------------------------------------------
-	export LD	:=	$(CXX)
-#---------------------------------------------------------------------------------
-endif
-#---------------------------------------------------------------------------------
-
-export OFILES	:=	$(addsuffix .o,$(BINFILES)) \
-					$(PNGFILES:.png=.o) \
-					$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
-
-export INCLUDE	:=	$(foreach dir,$(INCLUDES),-iquote $(CURDIR)/$(dir)) \
-					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-					-I$(CURDIR)/$(BUILD)
-
-export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
-
-icons := $(wildcard *.bmp)
-
-ifneq (,$(findstring $(TARGET).bmp,$(icons)))
-	export GAME_ICON := $(CURDIR)/$(TARGET).bmp
-else
-	ifneq (,$(findstring icon.bmp,$(icons)))
-		export GAME_ICON := $(CURDIR)/icon.bmp
-	endif
-endif
-
-.PHONY: ndsbootloader bootstub BootStrap exceptionstub $(BUILD) clean cia
-
-all:	ndsbootloader bootstub exceptionstub $(BUILD) BootStrap
+all: ndsbootloader bootstub exceptionstub $(TARGET).nds BootStrap
 
 cia:
 	$(MAKE) -C BootStrap bootstrap.cia
@@ -124,7 +42,10 @@ cia:
 dist:	all
 	rm	-fr	hbmenu
 	mkdir -p hbmenu/nds
-	cp hbmenu.nds hbmenu/BOOT.NDS
+	ndstool	-c boot.nds -7 arm7/$(TARGET).elf -9 arm9/$(TARGET).elf \
+			-b $(CURDIR)/icon.bmp "hbmenu;$(VERSION);http://devkitpro.org" \
+			-g #### 01 "HBMENU" -z 80040407 -u 00030015 -a 001FFFFF -p 0001
+	cp boot.nds hbmenu/BOOT.NDS
 	cp BootStrap/_BOOT_MP.NDS BootStrap/TTMENU.DAT BootStrap/_ds_menu.dat BootStrap/ez5sys.bin BootStrap/akmenu4.nds BootStrap/ismat.dat hbmenu
 	cp -r BootStrap/ACE3DS hbmenu
 ifneq (,$(wildcard BootStrap/bootstrap.cia))
@@ -132,63 +53,55 @@ ifneq (,$(wildcard BootStrap/bootstrap.cia))
 endif
 	cp testfiles/* hbmenu/nds
 	zip -9r hbmenu-$(VERSION).zip hbmenu README.md COPYING
+#---------------------------------------------------------------------------------
+checkarm7:
+	$(MAKE) -C arm7
 
 #---------------------------------------------------------------------------------
-$(BUILD):
-	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+checkarm9:
+	$(MAKE) -C arm9
 
 #---------------------------------------------------------------------------------
-clean:
-	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds $(TARGET).arm9 data
-	@$(MAKE) -C ndsbootloader clean
-	@$(MAKE) -C bootstub clean
-	@$(MAKE) -C BootStrap clean
-	@$(MAKE) -C exception-stub clean
+$(TARGET).nds : $(NITRO_FILES) arm7/$(TARGET).elf arm9/$(TARGET).elf
+	ndstool	-c $(TARGET).nds -7 arm7/$(TARGET).elf -9 arm9/$(TARGET).elf \
+			-b $(CURDIR)/icon.bmp "hbmenu;$(VERSION);http://devkitpro.org" \
+			-g HOME 01 "HBMENU" -z 80040407 -u 00030015 -a 001FFFFF -p 0001
+	@cp $(TARGET).nds 00000000.app
 
 data:
 	@mkdir -p data
 
 ndsbootloader: data
-	@$(MAKE) -C ndsbootloader LOADBIN=$(CURDIR)/data/load.bin
-
+	$(MAKE) -C ndsbootloader LOADBIN=$(CURDIR)/data/load.bin
+	
 exceptionstub: data
-	@$(MAKE) -C exception-stub STUBBIN=$(CURDIR)/data/exceptionstub.bin
+	$(MAKE) -C exception-stub STUBBIN=$(CURDIR)/data/exceptionstub.bin
 
 bootstub: data
-	@$(MAKE) -C bootstub
-
-BootStrap:
-	@$(MAKE) -C BootStrap
-
-#---------------------------------------------------------------------------------
-else
+	$(MAKE) -C bootstub
+	
+BootStrap: data
+	$(MAKE) -C BootStrap
 
 #---------------------------------------------------------------------------------
-# main targets
-#---------------------------------------------------------------------------------
-$(OUTPUT).nds	: 	$(OUTPUT).elf
-$(OUTPUT).elf	:	$(OFILES)
+arm7/$(TARGET).elf:
+	$(MAKE) -C arm7
 
 #---------------------------------------------------------------------------------
-%.bin.o	:	%.bin
-#---------------------------------------------------------------------------------
-	@echo $(notdir $<)
-	$(bin2o)
+arm9/$(TARGET).elf: ndsbootloader
+	$(MAKE) -C arm9
 
 #---------------------------------------------------------------------------------
-# This rule creates assembly source files using grit
-# grit takes an image file and a .grit describing how the file is to be processed
-# add additional rules like this for each image extension
-# you use in the graphics folders
-#---------------------------------------------------------------------------------
-%.s %.h   : %.png %.grit
-#---------------------------------------------------------------------------------
-	grit $< -fts -o$*
+clean:
+	$(MAKE) -C arm9 clean
+	$(MAKE) -C arm7 clean
+	$(MAKE) -C ndsbootloader clean
+	$(MAKE) -C bootstub clean
+	$(MAKE) -C BootStrap clean
+	$(MAKE) -C exception-stub clean
+	rm -rf data
+	rm -rf hbmenu
+	rm -f $(TARGET).nds
+	rm -f boot.nds
+	rm -f 00000000.app
 
--include $(DEPSDIR)/*.d
-
-#---------------------------------------------------------------------------------------
-endif
-#---------------------------------------------------------------------------------------

@@ -20,6 +20,7 @@ all: checkarm7 checkarm9 \
 	_ds_menu.dat ismat.dat ez5sys.bin \
 	akmenu4.nds TTMENU.DAT _BOOT_MP.NDS \
 	ACE3DS/_ds_menu.dat ACE3DS/_dsmenu.dat
+#	AUTORUN1.NDS
 
 _ds_menu.dat	:	$(TARGET).nds r4tfv2.dldi
 	@cp $(TARGET).nds _ds_menu.nds
@@ -59,6 +60,9 @@ ismat.dat	:	$(TARGET).nds mati.dldi
 	@cp $< $@
 	@dlditool mati.dldi $@
 
+AUTORUN1.NDS	:	$(TARGET).nds  nrio.dldi
+	@cp $< $@
+	@dlditool nrio.dldi $@
 #---------------------------------------------------------------------------------
 # Building separate .dsi and .nds binaries here is done purely to allow the .nds
 # binary to be used to replace various flashcart boot menus.

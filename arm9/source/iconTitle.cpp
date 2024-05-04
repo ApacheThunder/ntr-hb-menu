@@ -42,6 +42,8 @@ static int bg2, bg3;
 static u16 *sprite;
 static tNDSBanner banner;
 
+extern tNDSBanner hbNoIcon_bin;
+
 static inline void writecharRS (int row, int col, u16 car) {
 	// get map pointer
 	u16 *gfx   = bgGetMapPtr(bg2);
@@ -77,9 +79,7 @@ static inline void writeRow (int rownum, const char* text) {
 		writecharRS (rownum, i, 0);
 }
 
-static inline void clearIcon (void) {
-	dmaFillHalfWords(0, sprite, sizeof(banner.icon));
-}
+static inline void clearIcon (void) { dmaFillHalfWords(0, sprite, sizeof(banner.icon)); }
 
 void iconTitleInit (void) {
 	// initialize video mode
@@ -126,8 +126,19 @@ void iconTitleInit (void) {
 	swiWaitForVBlank();
 	oamUpdate(&oamMain);
 
+	// Load Default Icon.
+	DC_FlushAll();
+	dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
+	dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
+
 	// everything's ready :)
 	writeRow (1,"===>>> HBMenu+ <<<===");
+}
+
+static void loadDefaultIcon() {
+	DC_FlushAll();
+	dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
+	dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
 }
 
 
@@ -142,11 +153,13 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 		writeRow (2, "[directory]");
 		// icon
 		clearIcon();
+		loadDefaultIcon();
 	} else {
 		std::string ndsPath;
 		if (!argsNdsPath(name, ndsPath)) {
 			writeRow(2, "(invalid argv or NDS file!)");
 			clearIcon();
+			loadDefaultIcon();
 			return;
 		}
 
@@ -160,16 +173,17 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 			writeRow (2,"(can't open file!)");
 			// icon
 			clearIcon();
+			loadDefaultIcon();
 			fclose (fp);
 			return;
 		}
 
-		if (fseek (fp, offsetof(tNDSHeader, bannerOffset), SEEK_SET) != 0 ||
-				fread (&Icon_title_offset, sizeof(int), 1, fp) != 1) {
+		if (fseek (fp, offsetof(tNDSHeader, bannerOffset), SEEK_SET) != 0 || fread (&Icon_title_offset, sizeof(int), 1, fp) != 1) {
 			// text
 			writeRow (2, "(can't read file!)");
 			// icon
 			clearIcon();
+			loadDefaultIcon();
 			fclose (fp);
 			return;
 		}
@@ -179,16 +193,17 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 			writeRow (2, "(no title/icon)");
 			// icon
 			clearIcon();
+			loadDefaultIcon();
 			fclose (fp);
 			return;
 		}
 
-		if (fseek (fp, Icon_title_offset, SEEK_SET) != 0 ||
-				fread (&banner, sizeof(banner), 1, fp) != 1) {
+		if (fseek (fp, Icon_title_offset, SEEK_SET) != 0 || fread (&banner, sizeof(banner), 1, fp) != 1) {
 			// text
 			writeRow (2,"(can't read icon/title!)");
 			// icon
 			clearIcon();
+			loadDefaultIcon();
 			fclose (fp);
 			return;
 		}
@@ -198,17 +213,23 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 
 		// turn unicode into ascii (kind of)
 		// and convert 0x0A into 0x00
-		char *p = (char*)banner.titles[0];
-		for (size_t i = 0; i < sizeof(banner.titles[0]); i = i+2) {
-			if ((p[i] == 0x0A) || (p[i] == 0xFF))
+		char *p = (char*)banner.titles[1];
+		int rowOffset = 1;
+		int lineReturns = 0;
+		for (size_t i = 0; i < sizeof(banner.titles[1]); i = i+2) {
+			if ((p[i] == 0x0A) || (p[i] == 0xFF)) {
 				p[i/2] = 0;
-			else
+				lineReturns++;
+			} else {
 				p[i/2] = p[i];
+			}
 		}
+		
+		if (lineReturns < 2)rowOffset = 2; // Recenter if bennar has less 2 or less rows of text maintaining empty row gap between nds file name and nds banner.
 
 		// text
 		for (size_t i = 0; i < 3; ++i) {
-			writeRow(i+1, p);
+			writeRow(i+rowOffset, p);
 			p += strlen(p) + 1;
 		}
 
@@ -218,3 +239,4 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 		dmaCopy(banner.palette, SPRITE_PALETTE, sizeof(banner.palette));
 	}
 }
+
