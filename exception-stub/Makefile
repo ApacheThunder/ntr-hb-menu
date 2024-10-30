@@ -20,7 +20,7 @@ TARGET		:=	$(shell basename $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	source
 INCLUDES	:=	include ../include
-DATA		:=	data  
+DATA		:=	data
 GRAPHICS	:=	gfx  
 
 #---------------------------------------------------------------------------------

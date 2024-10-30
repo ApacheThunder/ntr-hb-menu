@@ -25,13 +25,23 @@
 
 #include "nds_loader_arm9.h"
 
-int main( int argc, char **argv) {
+
+void DisplayError(bool fatInitFailed) {
 	consoleDemoInit();
-	iprintf("hbmenu bootstrap ...\n");
-	if (fatInitDefault()) {
-		runNdsFile("/BOOT.NDS", 0, NULL);
+	printf("hbmenu bootstrap ...\n\n");
+	if (fatInitFailed) {
+		printf("FAT init failed!\n");
 	} else {
-		iprintf("FAT init failed!\n");
+		printf("Load NDS file Error!\n");
 	}
-	while(1) swiWaitForVBlank();
 }
+
+int main(int argc, char **argv) {
+	if (fatInitDefault()) {
+		if (runNdsFile("/BOOT.NDS", 0, NULL) != 0)DisplayError(true);
+	} else {
+		DisplayError(false);
+	}
+	while(1)swiWaitForVBlank();
+}
+

@@ -3,13 +3,14 @@
 *.NDS
 *.nds
 *.elf
-*.bin
 *.bz2
 *.dsi
 *.cia
 *.zip
+*.app
 BootStrap/arm7/build
 BootStrap/arm9/build
+BootStrap/*.bin
 data
 build
 hbmenu

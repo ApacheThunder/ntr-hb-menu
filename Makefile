@@ -29,12 +29,14 @@ NITRO_FILES :=
 
 include $(DEVKITARM)/ds_rules
 
-.PHONY: data ndsbootloader bootstub BootStrap exceptionstub clean
+# .PHONY: data ndsbootloader bootstub BootStrap exceptionstub clean
+.PHONY: data ndsbootloader bootstub BootStrap clean
 
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
-all: ndsbootloader bootstub exceptionstub $(TARGET).nds BootStrap
+# all: ndsbootloader bootstub exceptionstub $(TARGET).nds BootStrap
+all: ndsbootloader bootstub $(TARGET).nds BootStrap
 
 cia:
 	$(MAKE) -C BootStrap bootstrap.cia
@@ -74,8 +76,8 @@ data:
 ndsbootloader: data
 	$(MAKE) -C ndsbootloader LOADBIN=$(CURDIR)/data/load.bin
 	
-exceptionstub: data
-	$(MAKE) -C exception-stub STUBBIN=$(CURDIR)/data/exceptionstub.bin
+# exceptionstub: data
+#	$(MAKE) -C exception-stub STUBBIN=$(CURDIR)/data/exceptionstub.bin
 
 bootstub: data
 	$(MAKE) -C bootstub
@@ -98,7 +100,7 @@ clean:
 	$(MAKE) -C ndsbootloader clean
 	$(MAKE) -C bootstub clean
 	$(MAKE) -C BootStrap clean
-	$(MAKE) -C exception-stub clean
+#	$(MAKE) -C exception-stub clean
 	rm -rf data
 	rm -rf hbmenu
 	rm -f $(TARGET).nds
