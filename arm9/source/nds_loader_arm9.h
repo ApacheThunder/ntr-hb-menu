@@ -34,13 +34,11 @@ typedef enum {
 	RUN_NDS_PATCH_DLDI_FAILED,
 } eRunNdsRetCode;
 
-#define LOAD_DEFAULT_NDS 0
+// #define LOAD_DEFAULT_NDS 0
 
-eRunNdsRetCode runNds (const void* loader, u32 loaderSize, u32 cluster, bool initDisc, bool dldiPatchNds, int argc, const char** argv);
+eRunNdsRetCode runNds (const void* loader, u32 loaderSize, u32 cluster, bool initDisc, bool useExtDLDI, int argc, const char** argv);
 
 eRunNdsRetCode runNdsFile (const char* filename, int argc, const char** argv);
-
-bool installBootStub(bool havedsiSD);
 
 #ifdef __cplusplus
 }

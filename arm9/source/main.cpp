@@ -20,6 +20,8 @@
 
 ------------------------------------------------------------------*/
 #include <nds.h>
+#include <nds/fifocommon.h>
+#include <nds/fifomessages.h>
 #include <stdio.h>
 #include <fat.h>
 #include <sys/stat.h>
@@ -32,13 +34,31 @@
 #include "file_browse.h"
 #include "font.h"
 #include "hbmenu_consolebg.h"
+
 #include "iconTitle.h"
 #include "nds_loader_arm9.h"
-
+#include "read_card.h"
+#include "dldi_binaries.h"
+#include "ndsheaderbanner.h"
+#include "dldi_tools.h"
+// #include "tonccpy.h"
 
 using namespace std;
 
-void InitGUI(void) {
+#define InitialCartHeaderTWL 0x02FFC000 // System Menu keeps cart's header here (if cart is present) on initial boot of any DSiWare!
+
+
+volatile int err = 0;
+volatile bool GUIINIT = false;
+volatile bool usingSD = false;
+volatile bool slot1Available = false;
+volatile bool dsiSDAvailable = false;
+
+const bool autoBoot = true;
+
+void InitGUI (void) {
+	if (GUIINIT)return;
+	GUIINIT = true;
 	iconTitleInit();
 	videoSetModeSub(MODE_4_2D);
 	vramSetBankC(VRAM_C_SUB_BG);
@@ -60,24 +80,41 @@ void InitGUI(void) {
 	consoleSetWindow(console, 1, 1, 30, 22);
 }
 
-int stop(void) {
+
+int exitProgram(void) {
+	if (!GUIINIT)InitGUI();
+	if (err != 0)iprintf("Bootloader returned error %d\n", err);
+	// iprintf("Press A to power off.");
 	while(1) {
 		swiWaitForVBlank();
 		scanKeys();
-		if (keysDown() == 0)break;
+		if (!keysHeld())break;
 	}
-	while(1) {
+	while (1) {
 		swiWaitForVBlank();
 		scanKeys();
 		if (keysDown() != 0)break;
 	}
+	systemShutDown();
 	return 0;
 }
 
 int FileBrowser() {
+	InitGUI();
 	consoleClear();
+	while(1) {
+		swiWaitForVBlank();
+		scanKeys();
+		if (!keysHeld())break;
+	}
 	vector<string> extensionList = argsGetExtensionList();
-	chdir("/nds");
+	
+	if (slot1Available) {
+		if (access("fat:/", F_OK) == 0)chdir("fat:/");
+	} else {
+		if (access("sd:/", F_OK) == 0)chdir("sd:/");	
+	}
+	
 	while(1) {
 		string filename = browseForFile(extensionList);
 		// Construct a command line
@@ -88,36 +125,123 @@ int FileBrowser() {
 			iprintf("Running %s with %d parameters\n", argarray[0].c_str(), argarray.size());
 			// Make a copy of argarray using C strings, for the sake of runNdsFile
 			vector<const char*> c_args;
-			for (const auto& arg: argarray) { c_args.push_back(arg.c_str()); }
+			for (const auto& arg: argarray)c_args.push_back(arg.c_str());
 			// Try to run the NDS file with the given arguments
 			int err = runNdsFile(c_args[0], c_args.size(), &c_args[0]);
 			iprintf("Start failed. Error %i\n", err);
 		}
 		argarray.clear();
 	}
-	return stop();
+	return 0;
 }
 
-int main(int argc, char **argv) {
-	// overwrite reboot stub identifier
-	// so tapping power on DSi returns to DSi menu
+
+bool InitSlot1DLDI() {
+	if (REG_SCFG_MC == 0x11)return false;
+	
+	// bool cardReset = false;
+	// bool usedBuiltinDLDI = false;
+		
+	if (REG_SCFG_MC == 0x10) {
+		// cardInit((sNDSHeaderExt*)((u32*)InitialCartHeaderTWL)); // Original R4 needs card init for some cursed reason.
+		cardInit((sNDSHeaderExt*)InitialCartHeaderTWL); // Original R4 needs card init for some cursed reason.
+		for (int i = 0; i < 30; i++)swiWaitForVBlank();
+		// cardReset = true;
+	}
+	
+	sNDSHeaderExt* cartHeader = (sNDSHeaderExt*)InitialCartHeaderTWL;
+	
+	if (!memcmp(cartHeader->gameCode, "ASMA", 4)) {
+		if (!memcmp(cartHeader->gameTitle, "MEDIAPLAYER", 11)) {
+			dldiLoadFromBin(gmtf_dldi);
+		} else {
+			dldiLoadFromBin(r4tf_dldi);
+		}
+		// usedBuiltinDLDI = true;
+	} else {
+		for (int i = 0; i < 10; i++)swiWaitForVBlank();
+		dldiLoadFromBin(ttio_dldi);
+		// usedBuiltinDLDI = true;
+	}
+	
+	/*else if (!memcmp(cartHeader->gameCode, "TTDS", 4) || !memcmp(cartHeader->gameCode, "R4GD", 4)) {
+		dldiLoadFromBin(ttio_dldi);
+		usedBuiltinDLDI = true;
+	} else if (!memcmp(cartHeader->gameCode, "ACEK", 4) || !memcmp(cartHeader->gameCode, "YCEP", 4) || !memcmp(cartHeader->gameCode, "AHZH", 4) || 
+			   !memcmp(cartHeader->gameCode, "CHPJ", 4) || !memcmp(cartHeader->gameCode, "ADLP", 4) ||
+			   !memcmp(cartHeader->gameTitle, "QMATETRIAL", 10) || !memcmp(cartHeader->gameTitle, "R4DSULTRA", 9) // R4iDSN/R4 Ultra
+	) {
+		dldiLoadFromBin(ak2_dldi); // Acekard 2(i)
+		usedBuiltinDLDI = true;
+	} else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
+		dldiLoadFromBin(m3ds_dldi);
+		usedBuiltinDLDI = true;
+	} else if (!memcmp(cartHeader->gameCode, "ABJJ", 4)) {
+		dldiLoadFromBin(ez5n_dldi);
+		usedBuiltinDLDI = true;
+	}
+	
+	if (!usedBuiltinDLDI && access("sd:/slot1.dldi", F_OK) == 0) {
+		if (!cardReset) {
+			cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
+			for (int i = 0; i < 30; i++) swiWaitForVBlank();
+		}
+		myDldiLoadFromFile("sd:/slot1.dldi");
+	} else if (!usedBuiltinDLDI) {
+		return false;
+	}*/
+	
+	return true;
+}
+
+
+int main(void) {
 	extern u64 *fake_heap_end;
 	*fake_heap_end = 0;
-	InitGUI();
-	printf ("\n\n\n\n\n\n\n\n\n\n      Initializing FAT ...\n");
-	/*printf ("\n\n\n\n\n\n\n\n\n      Initializing FAT ...\n");
-	printf ("\n     Press A when ready ...\n");
-	while (1) {
-		swiWaitForVBlank();
-		scanKeys();
-		if (keysHeld())break;
-	}*/
-	if (!fatInitDefault()) { 
-		consoleClear();
-		printf ("\n\n\n\n\n\n\n\n\n\n       FAT init failed!       \n");
-		return stop();
+	
+	defaultExceptionHandler();
+
+	if (!isDSiMode()) {
+		InitGUI();
+		printf ("\n\n\n\n\n\n\n\n\n\n      Unsupported Console!\n");
+		return exitProgram();
 	}
-	FileBrowser();
-	return 0;
+	
+	sysSetCardOwner(BUS_OWNER_ARM9);
+	
+	if (InitSlot1DLDI()) {
+		if (fatMountSimple("fat", dldiGet()))slot1Available = true;
+	}
+	
+	dsiSDAvailable = fatMountSimple("sd", get_io_dsisd());
+	
+	
+	if (!slot1Available && !dsiSDAvailable) {
+		InitGUI();
+		printf ("\n\n\n\n\n\n\n\n\n\n     No filesystems found!\n");
+		return exitProgram();
+	}
+	
+	if (autoBoot && slot1Available) {
+		scanKeys();
+		swiWaitForVBlank();
+		u32 KeysDown = keysDown();
+		switch (KeysDown) {
+			case 0: {
+				if(access("fat:/_picoboot.nds", F_OK) == 0) {
+					usingSD = false;
+					const char *argarray[1] = { "fat:/_picoboot.nds" };
+					err = runNdsFile("fat:/_picoboot.nds", 1, argarray);
+					return exitProgram();
+				}
+			}
+			default: {
+				err = FileBrowser();
+				return exitProgram();
+			} break;
+		}
+	}
+	err = FileBrowser();
+	return exitProgram();
 }
 

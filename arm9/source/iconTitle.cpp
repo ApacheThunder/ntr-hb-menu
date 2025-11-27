@@ -42,7 +42,19 @@ static int bg2, bg3;
 static u16 *sprite;
 static tNDSBanner banner;
 
+extern tNDSBanner dsCardInvalid_bin;
 extern tNDSBanner hbNoIcon_bin;
+
+typedef struct sNDSBannerTest {
+	u16 version;			//!< version of the banner.
+	u16 crc;				//!< 16 bit crc/checksum of the banner.
+	u8 reserved[28];
+	u8 iconData[2080];
+} tNDSBannerTest;
+
+bool checkBannerCRC(u8* banner) {
+	return (((tNDSBannerTest*)banner)->crc == swiCRC16(0xFFFF, ((tNDSBannerTest*)banner)->iconData, 0x820));
+}
 
 static inline void writecharRS (int row, int col, u16 car) {
 	// get map pointer
@@ -118,27 +130,19 @@ void iconTitleInit (void) {
 	oamInit(&oamMain, SpriteMapping_1D_128, false);
 	sprite = oamAllocateGfx(&oamMain, SpriteSize_32x32, SpriteColorFormat_16Color);
 	dmaFillHalfWords(0, sprite, sizeof(banner.icon));
-	oamSet(&oamMain, 0, ICON_POS_X, ICON_POS_Y, 0, 0,
-	       SpriteSize_32x32, SpriteColorFormat_16Color, sprite,
-	       -1, 0, 0, 0, 0, 0);
+	oamSet(&oamMain, 0, ICON_POS_X, ICON_POS_Y, 0, 0, SpriteSize_32x32, SpriteColorFormat_16Color, sprite, -1, 0, 0, 0, 0, 0);
 
 	// oam can only be updated during vblank
 	swiWaitForVBlank();
 	oamUpdate(&oamMain);
-
-	// Load Default Icon.
+	
+	// Load Default Icons.
 	DC_FlushAll();
 	dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
 	dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
 
 	// everything's ready :)
-	writeRow (1,"===>>> HBMenu+ <<<===");
-}
-
-static void loadDefaultIcon() {
-	DC_FlushAll();
-	dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
-	dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
+	writeRow (1,"===>>> HBMENU DELUXE <<<===");
 }
 
 
@@ -153,13 +157,18 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 		writeRow (2, "[directory]");
 		// icon
 		clearIcon();
-		loadDefaultIcon();
+		DC_FlushAll();
+		dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
+		dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
 	} else {
 		std::string ndsPath;
 		if (!argsNdsPath(name, ndsPath)) {
 			writeRow(2, "(invalid argv or NDS file!)");
+			// icon
 			clearIcon();
-			loadDefaultIcon();
+			DC_FlushAll();
+			dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
+			dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
 			return;
 		}
 
@@ -173,17 +182,22 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 			writeRow (2,"(can't open file!)");
 			// icon
 			clearIcon();
-			loadDefaultIcon();
+			DC_FlushAll();
+			dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
+			dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
 			fclose (fp);
 			return;
 		}
 
-		if (fseek (fp, offsetof(tNDSHeader, bannerOffset), SEEK_SET) != 0 || fread (&Icon_title_offset, sizeof(int), 1, fp) != 1) {
+		if (fseek (fp, offsetof(tNDSHeader, bannerOffset), SEEK_SET) != 0 ||
+			fread (&Icon_title_offset, sizeof(int), 1, fp) != 1) {
 			// text
 			writeRow (2, "(can't read file!)");
 			// icon
 			clearIcon();
-			loadDefaultIcon();
+			DC_FlushAll();
+			dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
+			dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
 			fclose (fp);
 			return;
 		}
@@ -193,17 +207,34 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 			writeRow (2, "(no title/icon)");
 			// icon
 			clearIcon();
-			loadDefaultIcon();
+			DC_FlushAll();
+			dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
+			dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
 			fclose (fp);
 			return;
 		}
 
-		if (fseek (fp, Icon_title_offset, SEEK_SET) != 0 || fread (&banner, sizeof(banner), 1, fp) != 1) {
+		if (fseek (fp, Icon_title_offset, SEEK_SET) != 0 ||
+			fread (&banner, sizeof(banner), 1, fp) != 1) {
 			// text
 			writeRow (2,"(can't read icon/title!)");
 			// icon
 			clearIcon();
-			loadDefaultIcon();
+			DC_FlushAll();
+			dmaCopy(hbNoIcon_bin.icon,    sprite,         sizeof(hbNoIcon_bin.icon));
+			dmaCopy(hbNoIcon_bin.palette, SPRITE_PALETTE, sizeof(hbNoIcon_bin.palette));
+			fclose (fp);
+			return;
+		}
+		
+		if (!checkBannerCRC((u8*)&banner)) {
+			// text
+			writeRow (2,"(invalid icon/title!)");
+			// icon
+			clearIcon();
+			DC_FlushAll();
+			dmaCopy(dsCardInvalid_bin.icon,    sprite,         sizeof(dsCardInvalid_bin.icon));
+			dmaCopy(dsCardInvalid_bin.palette, SPRITE_PALETTE, sizeof(dsCardInvalid_bin.palette));
 			fclose (fp);
 			return;
 		}
@@ -213,10 +244,10 @@ void iconTitleUpdate (int isdir, const std::string& name) {
 
 		// turn unicode into ascii (kind of)
 		// and convert 0x0A into 0x00
-		char *p = (char*)banner.titles[1];
+		char *p = (char*)banner.titles[0];
 		int rowOffset = 1;
 		int lineReturns = 0;
-		for (size_t i = 0; i < sizeof(banner.titles[1]); i = i+2) {
+		for (size_t i = 0; i < sizeof(banner.titles[0]); i = i+2) {
 			if ((p[i] == 0x0A) || (p[i] == 0xFF)) {
 				p[i/2] = 0;
 				lineReturns++;

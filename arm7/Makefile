@@ -22,15 +22,17 @@ DATA     :=
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH := -mthumb -mthumb-interwork
+ARCH := -mthumb-interwork
 
-CFLAGS   := -g -Wall -Os \
+CFLAGS   :=	-g -Wall -O2 \
+			-mcpu=arm7tdmi -mtune=arm7tdmi -fomit-frame-pointer \
+			-ffast-math \
             $(ARCH) $(INCLUDE) -DARM7
 CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS  := -g $(ARCH)
 LDFLAGS   = -specs=ds_arm7.specs -g $(ARCH) -Wl,-Map,$(notdir $*).map
 
-LIBS := -lnds7
+LIBS := -lnds7 -lmm7
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
@@ -120,3 +122,4 @@ $(ARM7ELF) : $(OFILES)
 #---------------------------------------------------------------------------------------
 endif
 #---------------------------------------------------------------------------------------
+
