@@ -61,10 +61,15 @@ void InitGUI(void) {
 }
 
 int stop(void) {
-	while (1) {
+	while(1) {
 		swiWaitForVBlank();
 		scanKeys();
-		if (keysHeld())break;
+		if (keysDown() == 0)break;
+	}
+	while(1) {
+		swiWaitForVBlank();
+		scanKeys();
+		if (keysDown() != 0)break;
 	}
 	return 0;
 }
@@ -99,7 +104,14 @@ int main(int argc, char **argv) {
 	extern u64 *fake_heap_end;
 	*fake_heap_end = 0;
 	InitGUI();
-	printf ("\n\n\n\n\n\n\n\n\n\n     Initializing FAT ...\n");
+	printf ("\n\n\n\n\n\n\n\n\n\n      Initializing FAT ...\n");
+	/*printf ("\n\n\n\n\n\n\n\n\n      Initializing FAT ...\n");
+	printf ("\n     Press A when ready ...\n");
+	while (1) {
+		swiWaitForVBlank();
+		scanKeys();
+		if (keysHeld())break;
+	}*/
 	if (!fatInitDefault()) { 
 		consoleClear();
 		printf ("\n\n\n\n\n\n\n\n\n\n       FAT init failed!       \n");

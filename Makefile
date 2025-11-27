@@ -36,7 +36,7 @@ include $(DEVKITARM)/ds_rules
 # main targets
 #---------------------------------------------------------------------------------
 # all: ndsbootloader bootstub exceptionstub $(TARGET).nds BootStrap
-all: ndsbootloader bootstub $(TARGET).nds BootStrap
+all: ndsbootloader bootstub $(TARGET).nds $(TARGET).dsi BootStrap
 
 cia:
 	$(MAKE) -C BootStrap bootstrap.cia
@@ -64,11 +64,16 @@ checkarm9:
 	$(MAKE) -C arm9
 
 #---------------------------------------------------------------------------------
+$(TARGET).dsi : $(NITRO_FILES) arm7/$(TARGET).elf arm9/$(TARGET).elf
+	ndstool	-c $(TARGET).dsi -7 arm7/$(TARGET).elf -9 arm9/$(TARGET).elf \
+			-b $(CURDIR)/icon.bmp "hbmenu;$(VERSION);http://devkitpro.org" \
+			-g HOME 01 "HBMENU" -z 80040407 -u 00030015 -a 001FFFFF -p 0001
+	@cp $(TARGET).dsi 00000000.app
+	
 $(TARGET).nds : $(NITRO_FILES) arm7/$(TARGET).elf arm9/$(TARGET).elf
 	ndstool	-c $(TARGET).nds -7 arm7/$(TARGET).elf -9 arm9/$(TARGET).elf \
 			-b $(CURDIR)/icon.bmp "hbmenu;$(VERSION);http://devkitpro.org" \
-			-g HOME 01 "HBMENU" -z 80040407 -u 00030015 -a 001FFFFF -p 0001
-	@cp $(TARGET).nds 00000000.app
+			-h 0x200
 
 data:
 	@mkdir -p data
@@ -103,6 +108,7 @@ clean:
 #	$(MAKE) -C exception-stub clean
 	rm -rf data
 	rm -rf hbmenu
+	rm -f $(TARGET).dsi
 	rm -f $(TARGET).nds
 	rm -f boot.nds
 	rm -f 00000000.app
