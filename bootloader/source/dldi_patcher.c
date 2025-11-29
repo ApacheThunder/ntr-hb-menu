@@ -221,3 +221,4 @@ bool dldiPatchBinary (data_t *binData, u32 binSize) {
 	return true;
 }
 #endif
+

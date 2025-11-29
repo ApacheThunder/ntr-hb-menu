@@ -43,13 +43,8 @@ using namespace std;
 
 extern volatile bool usingSD;
 extern volatile bool slot1Available;
-extern volatile bool dsiSDAvailable;
 
-
-struct DirEntry {
-	string name;
-	bool isDirectory;
-};
+struct DirEntry { string name; bool isDirectory; };
 
 
 bool nameEndsWith (const string& name, const vector<string> extensionList) {
@@ -167,8 +162,9 @@ string browseForFile (const vector<string>& extensionList) {
 			swiWaitForVBlank();
 		} while (!pressed);
 		
-		if (slot1Available && dsiSDAvailable) {
-			if ((pressed & KEY_L) || (pressed & KEY_R)) {
+		
+		if ((pressed & KEY_L) || (pressed & KEY_R)) {
+			if (slot1Available) {
 				PlaySelectSFX();
 				if (usingSD) {
 					if (access("fat:/", F_OK) == 0)chdir("fat:/");
@@ -185,11 +181,11 @@ string browseForFile (const vector<string>& extensionList) {
 					fileOffset = 0;
 					goto RESET;
 				}
+			} else {
+				PlayWrongSFX();
 			}
-		} else {
-			if ((pressed & KEY_L) || (pressed & KEY_R))PlayWrongSFX();
 		}
-		
+
 		if (pressed & KEY_UP) 		{ fileOffset -= 1; PlaySelectSFX(); }
 		if (pressed & KEY_DOWN)		{ fileOffset += 1; PlaySelectSFX(); }
 		if (pressed & KEY_LEFT)		{ fileOffset -= ENTRY_PAGE_LENGTH; PlaySelectSFX(); }

@@ -29,15 +29,15 @@
 
 #include "load_bin.h"
 
-#ifndef _NO_BOOTSTUB_
-#include "bootstub_bin.h"
-#include "exceptionstub_bin.h"
-#endif
-
 #include "nds_loader_arm9.h"
+#include "dldi_tools.h"
 #include "tonccpy.h"
 
-#define TMP_DATA 0x02100000
+#define DEVICE_TYPE_DLDI 0x49444C44
+#define FIX_ALL		0x01
+#define FIX_GLUE	0x02
+#define FIX_GOT		0x04
+#define FIX_BSS		0x08
 
 #define LCDC_BANK_D (u16*)0x06860000
 #define STORED_FILE_CLUSTER (*(((u32*)LCDC_BANK_D) + 1))
@@ -55,14 +55,11 @@
 typedef signed int addr_t;
 typedef unsigned char data_t;
 
+// Normal DLDI uses "\xED\xA5\x8D\xBF Chishm"
+// Bootloader string is different to avoid being patched
+static const data_t dldiMagicLoaderString[] = "\xEE\xA5\x8D\xBF Chishm";	// Different to a normal DLDI file
+
 extern volatile bool usingSD;
-// extern volatile bool usingR4TF;
-
-#define FIX_ALL		0x01
-#define FIX_GLUE	0x02
-#define FIX_GOT		0x04
-#define FIX_BSS		0x08
-
 
 enum DldiOffsets {
 	DO_magicString = 0x00,			// "\xED\xA5\x8D\xBF Chishm"
@@ -122,13 +119,6 @@ static addr_t quickFind (const data_t* data, const data_t* search, size_t dataLe
 	return -1;
 }
 
-// Normal DLDI uses "\xED\xA5\x8D\xBF Chishm"
-// Bootloader string is different to avoid being patched
-static const data_t dldiMagicLoaderString[] = "\xEE\xA5\x8D\xBF Chishm";	// Different to a normal DLDI file
-
-#define DEVICE_TYPE_DLDI 0x49444C44
-
-
 static bool dldiPatchLoader (data_t *binData, u32 binSize, bool clearBSS) {
 	addr_t memOffset;			// Offset of DLDI after the file is loaded into memory
 	addr_t patchOffset;			// Position of patch destination in the file
@@ -149,19 +139,6 @@ static bool dldiPatchLoader (data_t *binData, u32 binSize, bool clearBSS) {
 	patchOffset = quickFind (binData, dldiMagicLoaderString, binSize, sizeof(dldiMagicLoaderString));
 
 	if (patchOffset < 0)return false; // does not have a DLDI section
-
-	/*if (usingSD) {
-		pDH = (data_t*)(io_dldi_data);
-	} else {
-		if (usingR4TF) {
-			// pDH = (data_t*)(dldiLoadFromFile("sd:/r4tf.dldi"));
-			dldiLoadFromBin(r4tf_dldi);
-		} else {
-			// pDH = (data_t*)(dldiLoadFromFile("sd:/slot1.dldi"));
-			dldiLoadFromBin(ttio_dldi);
-		}
-		pDH = (data_t*)dldiGet();
-	}*/
 	
 	pDH = (data_t*)(io_dldi_data);
 	
@@ -239,6 +216,7 @@ static bool dldiPatchLoader (data_t *binData, u32 binSize, bool clearBSS) {
 	return true;
 }
 
+
 eRunNdsRetCode runNds (const void* loader, u32 loaderSize, u32 cluster, bool initDisc, bool useExtDLDI, int argc, const char** argv) {
 	char* argStart;
 	u16* argData;
@@ -294,11 +272,8 @@ eRunNdsRetCode runNds (const void* loader, u32 loaderSize, u32 cluster, bool ini
 	writeAddr ((data_t*) LCDC_BANK_D, ARG_START_OFFSET, (addr_t)argStart - (addr_t)LCDC_BANK_D);
 	writeAddr ((data_t*) LCDC_BANK_D, ARG_SIZE_OFFSET, argSize);
 
-		
-	if(useExtDLDI) {
-		// Patch the loader with a DLDI for the card
-		if (!dldiPatchLoader ((data_t*)LCDC_BANK_D, loaderSize, initDisc))return RUN_NDS_PATCH_DLDI_FAILED;
-	}
+	// Patch the loader with a DLDI for the card
+	if(useExtDLDI && !dldiPatchLoader ((data_t*)LCDC_BANK_D, loaderSize, initDisc))return RUN_NDS_PATCH_DLDI_FAILED;
 
 	irqDisable(IRQ_ALL);
 

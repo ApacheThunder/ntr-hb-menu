@@ -38,15 +38,12 @@
 #include "iconTitle.h"
 #include "nds_loader_arm9.h"
 #include "read_card.h"
-#include "dldi_binaries.h"
 #include "ndsheaderbanner.h"
 #include "dldi_tools.h"
-// #include "tonccpy.h"
+#include "dldi_binaries.h"
+#include "launcherData.h"
 
 using namespace std;
-
-#define InitialCartHeaderTWL 0x02FFC000 // System Menu keeps cart's header here (if cart is present) on initial boot of any DSiWare!
-
 
 volatile int err = 0;
 volatile bool GUIINIT = false;
@@ -107,13 +104,14 @@ int FileBrowser() {
 		scanKeys();
 		if (!keysHeld())break;
 	}
-	vector<string> extensionList = argsGetExtensionList();
-	
+		
 	if (slot1Available) {
 		if (access("fat:/", F_OK) == 0)chdir("fat:/");
 	} else {
 		if (access("sd:/", F_OK) == 0)chdir("sd:/");	
 	}
+	
+	vector<string> extensionList = argsGetExtensionList();
 	
 	while(1) {
 		string filename = browseForFile(extensionList);
@@ -139,59 +137,48 @@ int FileBrowser() {
 bool InitSlot1DLDI() {
 	if (REG_SCFG_MC == 0x11)return false;
 	
-	// bool cardReset = false;
-	// bool usedBuiltinDLDI = false;
-		
+	bool CardReset = false;
+	
+	sNDSHeaderExt ntrHeader;
+	
 	if (REG_SCFG_MC == 0x10) {
-		// cardInit((sNDSHeaderExt*)((u32*)InitialCartHeaderTWL)); // Original R4 needs card init for some cursed reason.
-		cardInit((sNDSHeaderExt*)InitialCartHeaderTWL); // Original R4 needs card init for some cursed reason.
+		cardInit(&ntrHeader); // Original R4 needs card init for some cursed reason.
 		for (int i = 0; i < 30; i++)swiWaitForVBlank();
-		// cardReset = true;
+		CardReset = true;
+	}
+		
+	if (access("sd:/slot1.dldi", F_OK) == 0) {
+		if (!CardReset)swiWaitForVBlank();
+		myDldiLoadFromFile("sd:/slot1.dldi");
+		return true;
 	}
 	
 	sNDSHeaderExt* cartHeader = (sNDSHeaderExt*)InitialCartHeaderTWL;
-	
+		
 	if (!memcmp(cartHeader->gameCode, "ASMA", 4)) {
-		if (!memcmp(cartHeader->gameTitle, "MEDIAPLAYER", 11)) {
-			dldiLoadFromBin(gmtf_dldi);
-		} else {
-			dldiLoadFromBin(r4tf_dldi);
-		}
-		// usedBuiltinDLDI = true;
-	} else {
-		for (int i = 0; i < 10; i++)swiWaitForVBlank();
-		dldiLoadFromBin(ttio_dldi);
-		// usedBuiltinDLDI = true;
-	}
-	
-	/*else if (!memcmp(cartHeader->gameCode, "TTDS", 4) || !memcmp(cartHeader->gameCode, "R4GD", 4)) {
-		dldiLoadFromBin(ttio_dldi);
-		usedBuiltinDLDI = true;
+		if (!memcmp(cartHeader->gameTitle, "MEDIAPLAYER", 11)) { dldiLoadFromBin(gmtf_dldi); } else { dldiLoadFromBin(r4tf_dldi); }
+		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ACEK", 4) || !memcmp(cartHeader->gameCode, "YCEP", 4) || !memcmp(cartHeader->gameCode, "AHZH", 4) || 
 			   !memcmp(cartHeader->gameCode, "CHPJ", 4) || !memcmp(cartHeader->gameCode, "ADLP", 4) ||
 			   !memcmp(cartHeader->gameTitle, "QMATETRIAL", 10) || !memcmp(cartHeader->gameTitle, "R4DSULTRA", 9) // R4iDSN/R4 Ultra
 	) {
-		dldiLoadFromBin(ak2_dldi); // Acekard 2(i)
-		usedBuiltinDLDI = true;
+		dldiLoadFromBin(ak2_dldi);
+		return true;
 	} else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
 		dldiLoadFromBin(m3ds_dldi);
-		usedBuiltinDLDI = true;
+		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ABJJ", 4)) {
 		dldiLoadFromBin(ez5n_dldi);
-		usedBuiltinDLDI = true;
+		return true;
+	} else /*if (!memcmp(cartHeader->gameCode, "TTDS", 4))*/ {
+		if (!CardReset) {
+			for (int i = 0; i < 10; i++)swiWaitForVBlank();
+		}
+		dldiLoadFromBin(ttio_dldi);
+		return true;
 	}
 	
-	if (!usedBuiltinDLDI && access("sd:/slot1.dldi", F_OK) == 0) {
-		if (!cardReset) {
-			cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
-			for (int i = 0; i < 30; i++) swiWaitForVBlank();
-		}
-		myDldiLoadFromFile("sd:/slot1.dldi");
-	} else if (!usedBuiltinDLDI) {
-		return false;
-	}*/
-	
-	return true;
+	/*return false;*/
 }
 
 
@@ -200,7 +187,7 @@ int main(void) {
 	*fake_heap_end = 0;
 	
 	defaultExceptionHandler();
-
+	
 	if (!isDSiMode()) {
 		InitGUI();
 		printf ("\n\n\n\n\n\n\n\n\n\n      Unsupported Console!\n");

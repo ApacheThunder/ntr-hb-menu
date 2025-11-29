@@ -80,3 +80,4 @@ struct IO_INTERFACE_STRUCT {
 typedef struct IO_INTERFACE_STRUCT IO_INTERFACE ;
 
 #endif	// define _DISC_IO_H
+

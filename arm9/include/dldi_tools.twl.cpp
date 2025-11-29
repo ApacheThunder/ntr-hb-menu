@@ -69,8 +69,17 @@ enum DldiOffsets {
 	DO_code = 0x80
 };
 
+void ntrCardReset() {
+	if (isDSiMode()) {
+		// Reset card slot
+		disableSlot1();
+		for(int i = 0; i < 25; i++)swiWaitForVBlank();
+		enableSlot1();
+		for(int i = 0; i < 15; i++)swiWaitForVBlank();
+	}
+}
 
-TWL_CODE static void dldiRelocateBinary (data_t *binData, size_t dldiFileSize) {
+static void dldiRelocateBinary (data_t *binData, size_t dldiFileSize) {
 	addr_t memOffset;			// Offset of DLDI after the file is loaded into memory
 	addr_t relocationOffset;	// Value added to all offsets within the patch to fix it properly
 	addr_t ddmemOffset;			// Original offset used in the DLDI file
@@ -151,7 +160,7 @@ TWL_CODE static void dldiRelocateBinary (data_t *binData, size_t dldiFileSize) {
 	}
 }
 
-TWL_CODE void dldiLoadFromBin (const u8 dldiAddr[]) {
+void dldiLoadFromBin (const u8 dldiAddr[]) {
 	// Check that it is a valid DLDI
 	if (!dldiIsValid ((DLDI_INTERFACE*)dldiAddr))return;
 
@@ -170,7 +179,7 @@ TWL_CODE void dldiLoadFromBin (const u8 dldiAddr[]) {
 	dldiRelocateBinary ((data_t*)dldiAddr, dldiSize);
 }
 
-TWL_CODE void myDldiLoadFromFile (const char* filepath) {
+void myDldiLoadFromFile (const char* filepath) {
 	FILE* file = fopen(filepath, "rb");
 	fread(dldiAddr, 1, 0x8000, file);
 	fclose(file);
@@ -189,6 +198,8 @@ TWL_CODE void myDldiLoadFromFile (const char* filepath) {
 		dldiSize = (char*)device->bssEnd - (char*)device->dldiStart;
 	}
 	dldiSize = (dldiSize + 0x03) & ~0x03; 		// Round up to nearest integer multiple
+	
 	dldiRelocateBinary((data_t*)dldiAddr, dldiSize);
 	delete[] dldiAddr;
 }
+

@@ -335,15 +335,12 @@ u32 cardInit (sNDSHeaderExt* ndsHeader) {
 		while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
 	}
 	
-	/*REG_ROMCTRL = 0;
-	REG_AUXSPICNT = 0;
-	//ioDelay2(167550);
-	for(i = 0; i < 25; i++) { swiWaitForVBlank(); }
-	REG_AUXSPICNT = (CARD_CR1_ENABLE | CARD_CR1_IRQ);
-	REG_ROMCTRL = (CARD_nRESET | CARD_SEC_SEED);
+	iCardId = cardReadID(CARD_CLK_SLOW);
 	while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
-	cardReset();
-	while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();*/
+	*(vu32*)InitialCartChipID = iCardId;
+	
+	normalChip = (iCardId & BIT(31)) != 0; // ROM chip ID MSB
+	nandChip = (iCardId & BIT(27)) != 0; // Card has a NAND chip
 
 	toncset(headerData, 0, 0x1000);
 
@@ -353,14 +350,9 @@ u32 cardInit (sNDSHeaderExt* ndsHeader) {
 	while(REG_ROMCTRL & CARD_BUSY);*/
 	
 	tonccpy(ndsHeader, headerData, 0x200);
-
-	iCardId = cardReadID(CARD_CLK_SLOW);
-	while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
-	*(vu32*)InitialCartChipID = iCardId;
 	
-	normalChip = (iCardId & BIT(31)) != 0; // ROM chip ID MSB
-	nandChip = (iCardId & BIT(27)) != 0; // Card has a NAND chip
-	
+	tonccpy((void*)InitialCartHeaderTWL, headerData, 0x1000);
+	tonccpy((void*)InitialCartHeader, headerData, 0x160);
 
 	if ((ndsHeader->unitCode != 0) || (ndsHeader->dsi_flags != 0)) {
 		// Extended header found
