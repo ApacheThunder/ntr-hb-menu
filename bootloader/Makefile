@@ -23,7 +23,7 @@ SPECS		:=  specs
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-CFLAGS	:=	-g -Wall -Os \
+CFLAGS	:=	-g -Wall -O2 \
 			-mcpu=arm7tdmi -mtune=arm7tdmi -fomit-frame-pointer\
 			-ffast-math \
 			$(ARCH)
@@ -31,7 +31,7 @@ CFLAGS	:=	-g -Wall -Os \
 CFLAGS	+=	$(INCLUDE) $(EXTRA_CFLAGS) -DARM7
 
 ASFLAGS	:=	-g $(ARCH) $(EXTRA_CFLAGS) $(INCLUDE)
-LDFLAGS	=	-nostartfiles -T $(TOPDIR)/load.ld -Wl,-g $(ARCH) -Wl,-Map,$(TARGET).map
+LDFLAGS	=	-nostartfiles -T $(TOPDIR)/load.ld -g $(ARCH) -Wl,-Map,$(TARGET).map
 
 LIBS	:= 
 

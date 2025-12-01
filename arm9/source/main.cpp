@@ -42,6 +42,11 @@
 #include "dldi_tools.h"
 #include "dldi_binaries.h"
 #include "launcherData.h"
+#include "tonccpy.h"
+
+/*#define NDS_HEADER			0x02FFFE00
+#define NDS_HEADER_POKEMON	0x02FFF000
+#define TWL_HEADER			0x02FFE000*/
 
 using namespace std;
 
@@ -133,60 +138,169 @@ int FileBrowser() {
 	return 0;
 }
 
+ITCM_CODE const char* getRomTid(const tNDSHeader* ndsHeader) {
+	static char romTid[5];
+	strncpy(romTid, ndsHeader->gameCode, 4);
+	romTid[4] = '\0';
+	return romTid;
+}
+
+/*ITCM_CODE void setMemoryAddress(const tNDSHeader* ndsHeader, u32 ChipID) {
+	if (ndsHeader->unitCode & BIT(1)) {
+		tonccpy((u32*)0x027FFA80, (u32*)ndsHeader, 0x160);	// Make a duplicate of DS header
+
+		*(vu32*)(0x027FA680) = 0x02FD4D80;
+		*(vu32*)(0x027FA684) = 0x00000000;
+		*(vu32*)(0x027FA688) = 0x00001980;
+
+		*(vu32*)(0x027FF00C) = 0x0000007F;
+		*(vu32*)(0x027FF010) = 0x550E25B8;
+		*(vu32*)(0x027FF014) = 0x02FF4000;
+
+		// Set region flag
+		if (strncmp(getRomTid(ndsHeader)+3, "J", 1) == 0) {
+			*(vu8*)(0x027FFD70) = 0;
+		} else if (strncmp(getRomTid(ndsHeader)+3, "E", 1) == 0) {
+			*(vu8*)(0x027FFD70) = 1;
+		} else if (strncmp(getRomTid(ndsHeader)+3, "P", 1) == 0) {
+			*(vu8*)(0x027FFD70) = 2;
+		} else if (strncmp(getRomTid(ndsHeader)+3, "U", 1) == 0) {
+			*(vu8*)(0x027FFD70) = 3;
+		} else if (strncmp(getRomTid(ndsHeader)+3, "C", 1) == 0) {
+			*(vu8*)(0x027FFD70) = 4;
+		} else if (strncmp(getRomTid(ndsHeader)+3, "K", 1) == 0) {
+			*(vu8*)(0x027FFD70) = 5;
+		}
+	}
+	
+    // Set memory values expected by loaded NDS
+    // from NitroHax, thanks to Chism
+	*((vu32*)0x027FF800) = ChipID;					// CurrentCardID
+	*((vu32*)0x027FF804) = ChipID;					// Command10CardID
+	*((vu16*)0x027FF808) = ndsHeader->headerCRC16;	// Header Checksum, CRC-16 of [000h-15Dh]
+	*((vu16*)0x027FF80A) = ndsHeader->secureCRC16;	// Secure Area Checksum, CRC-16 of [ [20h]..7FFFh]
+	*((vu16*)0x027FF850) = 0x5835;
+	// Copies of above
+	*((vu32*)0x027FFC00) = ChipID;					// CurrentCardID
+	*((vu32*)0x027FFC04) = ChipID;					// Command10CardID
+	*((vu16*)0x027FFC08) = ndsHeader->headerCRC16;	// Header Checksum, CRC-16 of [000h-15Dh]
+	*((vu16*)0x027FFC0A) = ndsHeader->secureCRC16;	// Secure Area Checksum, CRC-16 of [ [20h]..7FFFh]
+	*((vu16*)0x027FFC10) = 0x5835;
+	*((vu16*)0x027FFC40) = 0x01;						// Boot Indicator -- EXTREMELY IMPORTANT!!! Thanks to cReDiAr
+	
+	tonccpy((u32*)0x027FC000, (u32*)InitialCartHeaderTWL, 0x1000);
+	tonccpy((u32*)0x027FF000, (u32*)NDS_HEADER_POKEMON, 0x170);
+	tonccpy((u32*)0x027FFE00, (u32*)NDS_HEADER, 0x160);
+	tonccpy((u32*)0x027FE000, (u32*)TWL_HEADER, 0x1000);
+		
+	tonccpy((u32*)0x027FF830, (u32*)0x02FFF830, 0x20);
+	tonccpy((u32*)0x027FFC80, (u32*)0x02FFFC80, 0x70);
+	tonccpy((u32*)0x027FFD80, (u32*)0x02FFFD80, 0x70);
+}*/
+
+/*void MaybeCardInit(bool doInit) {
+	if (doInit) {
+		// *(u32*)0x02000010 = 0xFFFFFFFF;
+		swiWaitForVBlank();
+		// Arm7 needs to do it's card init first
+		fifoSendValue32(FIFO_USER_01, 1);
+		swiWaitForVBlank();
+		fifoWaitValue32(FIFO_USER_02);
+		swiWaitForVBlank();
+		cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
+	} else {
+		// fifoSendValue32(FIFO_USER_03, 1);
+		// *(u32*)0x02000010 = 0;
+		swiWaitForVBlank();
+		fifoSendValue32(FIFO_USER_01, 1);
+		swiWaitForVBlank();
+		fifoWaitValue32(FIFO_USER_02);
+		swiWaitForVBlank();
+	}
+}*/
+
 
 bool InitSlot1DLDI() {
+	sysSetCardOwner(BUS_OWNER_ARM9);
+	
 	if (REG_SCFG_MC == 0x11)return false;
 	
 	bool CardReset = false;
 	
-	sNDSHeaderExt ntrHeader;
+	// if (REG_SCFG_MC == 0x10) {
+		// MaybeCardInit(true);
+		// CardReset = true;
+	// }
 	
-	if (REG_SCFG_MC == 0x10) {
-		cardInit(&ntrHeader); // Original R4 needs card init for some cursed reason.
-		for (int i = 0; i < 30; i++)swiWaitForVBlank();
-		CardReset = true;
-	}
 		
 	if (access("sd:/slot1.dldi", F_OK) == 0) {
-		if (!CardReset)swiWaitForVBlank();
+		if (!CardReset) {
+			for (int i = 0; i < 10; i++)swiWaitForVBlank();
+		}
 		myDldiLoadFromFile("sd:/slot1.dldi");
 		return true;
 	}
 	
 	sNDSHeaderExt* cartHeader = (sNDSHeaderExt*)InitialCartHeaderTWL;
+	
+	// setMemoryAddress((tNDSHeader*)cartHeader, *(vu32*)InitialCartChipID);
 		
 	if (!memcmp(cartHeader->gameCode, "ASMA", 4)) {
+		cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
 		if (!memcmp(cartHeader->gameTitle, "MEDIAPLAYER", 11)) { dldiLoadFromBin(gmtf_dldi); } else { dldiLoadFromBin(r4tf_dldi); }
+		return true;
+	} else if (!memcmp(cartHeader->gameCode, "ASME", 4)) {
+		cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
+		dldiLoadFromBin(cyclods_dldi);
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ACEK", 4) || !memcmp(cartHeader->gameCode, "YCEP", 4) || !memcmp(cartHeader->gameCode, "AHZH", 4) || 
 			   !memcmp(cartHeader->gameCode, "CHPJ", 4) || !memcmp(cartHeader->gameCode, "ADLP", 4) ||
 			   !memcmp(cartHeader->gameTitle, "QMATETRIAL", 10) || !memcmp(cartHeader->gameTitle, "R4DSULTRA", 9) // R4iDSN/R4 Ultra
 	) {
+		// if (!CardReset) { MaybeCardInit(true); } else { MaybeCardInit(false); }
 		dldiLoadFromBin(ak2_dldi);
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
+		// MaybeCardInit(false);
 		dldiLoadFromBin(m3ds_dldi);
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ABJJ", 4)) {
+		// MaybeCardInit(false);
 		dldiLoadFromBin(ez5n_dldi);
 		return true;
-	} else /*if (!memcmp(cartHeader->gameCode, "TTDS", 4))*/ {
+	} else if (!memcmp(cartHeader->gameCode, "AL3E", 4)) {
+		// MaybeCardInit(false);
+		dldiLoadFromBin(acep_dldi);
+		return true;
+	} else if (!memcmp(cartHeader->gameCode, "ALXX", 4)) {
+		// if (!CardReset) { MaybeCardInit(true); } else { MaybeCardInit(false); }
+		dldiLoadFromBin(ds2_dldi);
+		return true;
+	// } else if (!memcmp(cartHeader->gameCode, "TTDS", 4)) {
+	} else {
 		if (!CardReset) {
 			for (int i = 0; i < 10; i++)swiWaitForVBlank();
 		}
+		// MaybeCardInit(false);
 		dldiLoadFromBin(ttio_dldi);
 		return true;
 	}
-	
-	/*return false;*/
 }
 
 
 int main(void) {
-	extern u64 *fake_heap_end;
+	/*extern u64 *fake_heap_end;
 	*fake_heap_end = 0;
+		
 	
+	*(u32*)0x02000010 = 0;*/
 	defaultExceptionHandler();
+	
+	fifoWaitValue32(FIFO_USER_01);
+	
+	bool skipSlot1Init = false;
+	
+	u32 currentButton = 0;
 	
 	if (!isDSiMode()) {
 		InitGUI();
@@ -194,26 +308,20 @@ int main(void) {
 		return exitProgram();
 	}
 	
-	sysSetCardOwner(BUS_OWNER_ARM9);
+	/*scanKeys();
+	swiWaitForVBlank();
+	currentButton = keysDown();
+	switch (currentButton) {
+		case KEY_X: { skipSlot1Init = true; } break;
+	}*/
 	
-	if (InitSlot1DLDI()) {
-		if (fatMountSimple("fat", dldiGet()))slot1Available = true;
-	}
-	
-	dsiSDAvailable = fatMountSimple("sd", get_io_dsisd());
-	
-	
-	if (!slot1Available && !dsiSDAvailable) {
-		InitGUI();
-		printf ("\n\n\n\n\n\n\n\n\n\n     No filesystems found!\n");
-		return exitProgram();
-	}
-	
+	if (!skipSlot1Init && InitSlot1DLDI())slot1Available = fatMountSimple("fat", dldiGet());
+
 	if (autoBoot && slot1Available) {
 		scanKeys();
 		swiWaitForVBlank();
-		u32 KeysDown = keysDown();
-		switch (KeysDown) {
+		currentButton = keysDown();
+		switch (currentButton) {
 			case 0: {
 				if(access("fat:/_picoboot.nds", F_OK) == 0) {
 					usingSD = false;
@@ -222,12 +330,17 @@ int main(void) {
 					return exitProgram();
 				}
 			}
-			default: {
-				err = FileBrowser();
-				return exitProgram();
-			} break;
 		}
 	}
+	
+	dsiSDAvailable = fatMountSimple("sd", get_io_dsisd());
+	
+	if (!slot1Available && !dsiSDAvailable) {
+		InitGUI();
+		printf ("\n\n\n\n\n\n\n\n\n\n     No filesystems found!\n");
+		return exitProgram();
+	}
+	
 	err = FileBrowser();
 	return exitProgram();
 }

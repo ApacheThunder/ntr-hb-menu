@@ -28,7 +28,7 @@
 #include "tonccpy.h"
 #include "launcherData.h"
 
-enum {
+DTCM_DATA enum {
 	ERR_NONE         = 0x00,
 	ERR_STS_CLR_MEM  = 0x01,
 	ERR_STS_LOAD_BIN = 0x02,
@@ -55,40 +55,40 @@ enum {
 #define CARD_CMD_NAND_UNKNOWN        0xBB
 #define CARD_CMD_NAND_READ_ID        0x94
 
+
+DTCM_DATA static bool twlBlowfish = false;
+DTCM_DATA static bool normalChip = false;	// As defined by GBAtek, normal chip secure area is accessed in blocks of 0x200, other chip in blocks of 0x1000
+DTCM_DATA static u32 portFlags = 0;
+DTCM_DATA static u32 headerData[0x1000/sizeof(u32)] = {0};
+DTCM_DATA static u32 iCardId;
+DTCM_DATA static bool noSlotCrypto = true;
+
+DTCM_DATA static bool nandChip = false;
+DTCM_DATA static int nandSection = -1; // -1 = ROM, above that is the current 128 KiB section in RW
+DTCM_DATA u32 cardNandRomEnd = 0;
+DTCM_DATA u32 cardNandRwStart = 0;
+
 typedef union {	char title[4]; u32 key; } GameCode;
-
-static bool twlBlowfish = false;
-static bool normalChip = false;	// As defined by GBAtek, normal chip secure area is accessed in blocks of 0x200, other chip in blocks of 0x1000
-static u32 portFlags = 0;
-static u32 headerData[0x1000/sizeof(u32)] = {0};
 static u32 secureArea[CARD_SECURE_AREA_SIZE/sizeof(u32)] = {0};
-static u32 iCardId;
-static bool noSlotCrypto = true;
-
-static bool nandChip = false;
-static int nandSection = -1; // -1 = ROM, above that is the current 128 KiB section in RW
-u32 cardNandRomEnd = 0;
-u32 cardNandRwStart = 0;
-
 static const u8 cardSeedBytes[] = { 0xE8, 0x4D, 0x5A, 0xB1, 0x17, 0x8F, 0x99, 0xD5 };
 
-void ResetSlot() {
+ITCM_CODE void ResetSlot() {
 	// Reset card slot
 	if((REG_SCFG_MC != 0x11) && (REG_SCFG_MC != 0x10)) {
 		disableSlot1();
-		for(int i = 0; i < 15; i++)swiWaitForVBlank();
+		for(int i = 0; i < 20; i++)swiWaitForVBlank();
 	}
 	enableSlot1();
 	while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
-	for(int i = 0; i < 2; i++)swiWaitForVBlank();
+	for(int i = 0; i < 5; i++)swiWaitForVBlank();
 	REG_ROMCTRL = CARD_nRESET;
-	for (int i = 0; i < 15; i++) { while (REG_VCOUNT!=191); while (REG_VCOUNT==191); }
+	for (int i = 0; i < 20; i++)swiWaitForVBlank();
 }
 
 //---------------------------------------------------------------------------------
 // https://github.com/devkitPro/libnds/blob/105d4943dbac8f2bd99a47b22cd3ed48f96af083/source/common/card.c#L47-L62
 // but modified to write if CARD_WR is set.
-static void cardPolledTransferWrite(u32 flags, u32 *buffer, u32 length, const u8 *command) {
+ITCM_CODE static void cardPolledTransferWrite(u32 flags, u32 *buffer, u32 length, const u8 *command) {
 //---------------------------------------------------------------------------------
 	cardWriteCommand(command);
 	REG_ROMCTRL = flags | CARD_BUSY;
@@ -112,7 +112,7 @@ static void cardPolledTransferWrite(u32 flags, u32 *buffer, u32 length, const u8
 	} while (REG_ROMCTRL & CARD_BUSY);
 }
 
-static void decryptSecureArea (u32 gameCode, u32* secureArea, int iCardDevice) {
+ITCM_CODE static void decryptSecureArea (u32 gameCode, u32* secureArea, int iCardDevice) {
 	init_keycode (gameCode, 2, 8, iCardDevice);
 	crypt_64bit_down (secureArea);
 	init_keycode (gameCode, 3, 8, iCardDevice);
@@ -129,7 +129,7 @@ static struct {
 } key1data;
 
 
-static void initKey1Encryption (u8* cmdData, int iCardDevice) {
+ITCM_CODE static void initKey1Encryption (u8* cmdData, int iCardDevice) {
 	key1data.iii = rand() & 0x00000fff;
 	key1data.jjj = rand() & 0x00000fff;
 	key1data.kkkkk = rand() & 0x000fffff;
@@ -153,7 +153,7 @@ static void initKey1Encryption (u8* cmdData, int iCardDevice) {
 }
 
 // Note: cmdData must be aligned on a word boundary
-static void createEncryptedCommand (u8 command, u8* cmdData, u32 block) {
+ITCM_CODE static void createEncryptedCommand (u8 command, u8* cmdData, u32 block) {
 	unsigned long iii, jjj;
 
 	if (command != CARD_CMD_SECURE_READ)block = key1data.llll;
@@ -180,7 +180,7 @@ static void createEncryptedCommand (u8 command, u8* cmdData, u32 block) {
 	key1data.kkkkk += 1;
 }
 
-static void cardDelay (u16 readTimeout) {
+ITCM_CODE static void cardDelay (u16 readTimeout) {
 	/* Using a while loop to check the timeout,
 	   so we have to wait until one before overflow.
 	   This also requires an extra 1 for the timer data.
@@ -195,7 +195,7 @@ static void cardDelay (u16 readTimeout) {
 	TIMER_DATA(0) = 0;
 }
 
-static void switchToTwlBlowfish(sNDSHeaderExt* ndsHeader) {
+ITCM_CODE static void switchToTwlBlowfish(sNDSHeaderExt* ndsHeader) {
 	if (twlBlowfish || ndsHeader->unitCode == 0) return;
 
 	// Used for dumping the DSi arm9i/7i binaries
@@ -314,15 +314,14 @@ static void switchToTwlBlowfish(sNDSHeaderExt* ndsHeader) {
 	twlBlowfish = true;
 }
 
-u32 cardInit (sNDSHeaderExt* ndsHeader) {
+ITCM_CODE u32 cardInit (sNDSHeaderExt* ndsHeader) {
 	u32 portFlagsKey1, portFlagsSecRead;
+	u8 cmdData[8] __attribute__ ((aligned));
+	int secureBlockNumber, i;
+	GameCode* gameCode;
 	normalChip = false; // As defined by GBAtek, normal chip secure area and header are accessed in blocks of 0x200, other chip in blocks of 0x1000
 	nandChip = false;
 	nandSection = -1;
-	int secureBlockNumber;
-	int i;
-	u8 cmdData[8] __attribute__ ((aligned));
-	GameCode* gameCode;
 	noSlotCrypto = false;
 	twlBlowfish = false;
 
@@ -335,25 +334,20 @@ u32 cardInit (sNDSHeaderExt* ndsHeader) {
 		while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
 	}
 	
+	toncset(headerData, 0, 0x1000);
+
+	// Read the header
+	cardReadHeader((u8*)headerData);
+	
+	tonccpy(ndsHeader, headerData, 0x200);
+	
 	iCardId = cardReadID(CARD_CLK_SLOW);
 	while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
 	*(vu32*)InitialCartChipID = iCardId;
 	
 	normalChip = (iCardId & BIT(31)) != 0; // ROM chip ID MSB
 	nandChip = (iCardId & BIT(27)) != 0; // Card has a NAND chip
-
-	toncset(headerData, 0, 0x1000);
-
-	// Read the header
-	cardReadHeader((u8*)headerData);
-	/*cardParamCommand (CARD_CMD_HEADER_READ, 0, CARD_ACTIVATE | CARD_nRESET | CARD_CLK_SLOW | CARD_BLK_SIZE(1) | CARD_DELAY1(0x1FFF) | CARD_DELAY2(0x3F), (void*)headerData, 0x200/sizeof(u32));
-	while(REG_ROMCTRL & CARD_BUSY);*/
 	
-	tonccpy(ndsHeader, headerData, 0x200);
-	
-	tonccpy((void*)InitialCartHeaderTWL, headerData, 0x1000);
-	tonccpy((void*)InitialCartHeader, headerData, 0x160);
-
 	if ((ndsHeader->unitCode != 0) || (ndsHeader->dsi_flags != 0)) {
 		// Extended header found
 		if(normalChip) {
@@ -473,14 +467,22 @@ u32 cardInit (sNDSHeaderExt* ndsHeader) {
 			cardNandRwStart = 0x7200000;
 		}
 	}
-
+	
+	*(vu32*)InitialCartChipID = iCardId;
+		
+	tonccpy((void*)InitialCartHeaderTWL, headerData, 0x1000);
+	tonccpy((void*)InitialCartHeader, headerData, 0x160);
+		
+	for (int i = 0; i < 30; i++)swiWaitForVBlank();
+	
 	return ERR_NONE;
 }
+
 
 // If booted from DSi System Menu short cart init with no card reads or pokes to rom ctrl registers can be done.
 // System Menu is nice enough to do this for you. :P
 // (also is the case for booting from DS Download Play. ;) )
-u32 cardInitShort(sNDSHeaderExt* ndsHeader) {
+ITCM_CODE u32 cardInitShort(sNDSHeaderExt* ndsHeader) {
 	normalChip = false; // As defined by GBAtek, normal chip secure area and header are accessed in blocks of 0x200, other chip in blocks of 0x1000
 	nandChip = false;
 	nandSection = -1;
@@ -536,9 +538,9 @@ u32 cardInitShort(sNDSHeaderExt* ndsHeader) {
 	return ERR_NONE;
 }
 
-u32 cardGetId() { return iCardId; }
+ITCM_CODE u32 cardGetId() { return iCardId; }
 
-void cardRead (u32 src, void* dest, bool nandSave) {
+ITCM_CODE void cardRead (u32 src, void* dest, bool nandSave) {
 	sNDSHeaderExt* ndsHeader = (sNDSHeaderExt*)headerData;
 
 	if (src >= 0 && src < 0x1000) {
@@ -575,7 +577,7 @@ void cardRead (u32 src, void* dest, bool nandSave) {
 	if (!noSlotCrypto && (src > ndsHeader->romSize) && !(nandSave && src >= cardNandRwStart))switchToTwlBlowfish(ndsHeader);
 }
 
-void cardReadAlt (u32 src, void* dest, size_t size) {
+ITCM_CODE void cardReadAlt (u32 src, void* dest, size_t size) {
 	sNDSHeaderExt* ndsHeader = (sNDSHeaderExt*)headerData;
 	size_t readSize;
 	
@@ -608,7 +610,7 @@ void cardReadAlt (u32 src, void* dest, size_t size) {
 }
 
 // src must be a 0x800 byte array
-void cardWriteNand (void* src, u32 dest) {
+ITCM_CODE void cardWriteNand (void* src, u32 dest) {
 	if (dest < cardNandRwStart || !nandChip)return;
 
 	if (nandSection != (dest - cardNandRwStart) / (128 << 10)) {

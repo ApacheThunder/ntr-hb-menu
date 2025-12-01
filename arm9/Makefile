@@ -15,12 +15,12 @@ include $(DEVKITARM)/ds_rules
 # GRAPHICS is a list of directories containing image files to be converted with grit
 # all directories are relative to this makefile
 #---------------------------------------------------------------------------------
-BUILD    := build
-SOURCES  := source include
-INCLUDES := include
-DATA     := ../data
-GRAPHICS := gfx
-MUSIC       :=  audio
+BUILD		:= build
+SOURCES		:= source include
+INCLUDES	:= include
+DATA		:= ../data
+GRAPHICS	:= gfx
+MUSIC		:=  audio
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -37,6 +37,7 @@ CFLAGS	+=	$(INCLUDE) -DARM9
 CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS  := -g $(ARCH) $(INCLUDE)
 LDFLAGS   = -specs=dsi_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+# LDFLAGS   = -specs=../ds_arm9_hi.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project

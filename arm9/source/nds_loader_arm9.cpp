@@ -30,8 +30,9 @@
 #include "load_bin.h"
 
 #include "nds_loader_arm9.h"
-#include "dldi_tools.h"
 #include "tonccpy.h"
+#include "read_card.h"
+#include "launcherData.h"
 
 #define DEVICE_TYPE_DLDI 0x49444C44
 #define FIX_ALL		0x01
@@ -55,11 +56,11 @@
 typedef signed int addr_t;
 typedef unsigned char data_t;
 
+extern volatile bool usingSD;
+
 // Normal DLDI uses "\xED\xA5\x8D\xBF Chishm"
 // Bootloader string is different to avoid being patched
 static const data_t dldiMagicLoaderString[] = "\xEE\xA5\x8D\xBF Chishm";	// Different to a normal DLDI file
-
-extern volatile bool usingSD;
 
 enum DldiOffsets {
 	DO_magicString = 0x00,			// "\xED\xA5\x8D\xBF Chishm"
@@ -211,11 +212,11 @@ static bool dldiPatchLoader (data_t *binData, u32 binSize, bool clearBSS) {
 
 	if (clearBSS && (pDH[DO_fixSections] & FIX_BSS)) { 
 		// Initialise the BSS to 0, only if the disc is being re-inited
-		memset (&pAH[readAddr(pDH, DO_bss_start) - ddmemStart] , 0, readAddr(pDH, DO_bss_end) - readAddr(pDH, DO_bss_start));
+		// memset (&pAH[readAddr(pDH, DO_bss_start) - ddmemStart] , 0, readAddr(pDH, DO_bss_end) - readAddr(pDH, DO_bss_start));
+		toncset (&pAH[readAddr(pDH, DO_bss_start) - ddmemStart] , 0, readAddr(pDH, DO_bss_end) - readAddr(pDH, DO_bss_start));
 	}
 	return true;
 }
-
 
 eRunNdsRetCode runNds (const void* loader, u32 loaderSize, u32 cluster, bool initDisc, bool useExtDLDI, int argc, const char** argv) {
 	char* argStart;
@@ -274,6 +275,9 @@ eRunNdsRetCode runNds (const void* loader, u32 loaderSize, u32 cluster, bool ini
 
 	// Patch the loader with a DLDI for the card
 	if(useExtDLDI && !dldiPatchLoader ((data_t*)LCDC_BANK_D, loaderSize, initDisc))return RUN_NDS_PATCH_DLDI_FAILED;
+
+	sysSetCardOwner (BUS_OWNER_ARM7);
+	sysSetCartOwner (BUS_OWNER_ARM7);
 
 	irqDisable(IRQ_ALL);
 

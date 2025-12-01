@@ -45,6 +45,7 @@ Helpful information:
 #include "card.h"
 #include "boot.h"
 #include "sdmmc.h"
+#include "tonccpy.h"
 
 void arm7clearRAM();
 
@@ -322,6 +323,7 @@ int main (void) {
 		_io_dldi.fn_startup = sdmmc_startup;
 	}
 #endif
+
 	u32 fileCluster = storedFileCluster;
 	// Init card
 	if(!FAT_InitFiles(initDisc))return -1;

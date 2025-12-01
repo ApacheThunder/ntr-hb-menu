@@ -24,10 +24,10 @@
 
 #define KEYSIZE 0x1048
 
-static u32 keycode [3];
-static u32 keybuf [KEYSIZE/sizeof(u32)];
+DTCM_DATA static u32 keycode [3];
+DTCM_DATA static u32 keybuf [KEYSIZE/sizeof(u32)];
 
-void crypt_64bit_up (u32* ptr) {
+ITCM_CODE void crypt_64bit_up (u32* ptr) {
 	u32 x = ptr[1];
 	u32 y = ptr[0];
 	u32 z;
@@ -47,7 +47,7 @@ void crypt_64bit_up (u32* ptr) {
 	ptr[1] = y ^ keybuf[0x11];
 }
 
-void crypt_64bit_down (u32* ptr) {
+ITCM_CODE void crypt_64bit_down (u32* ptr) {
 	u32 x = ptr[1];
 	u32 y = ptr[0];
 	u32 z;
@@ -67,7 +67,7 @@ void crypt_64bit_down (u32* ptr) {
 	ptr[1] = y ^ keybuf[0x00];
 }
 
-static u32 bswap_32bit (u32 in) {
+ITCM_CODE static u32 bswap_32bit (u32 in) {
 	u8 a,b,c,d;
 	a = (u8)((in >>  0) & 0xff);
 	b = (u8)((in >>  8) & 0xff);
@@ -79,7 +79,7 @@ static u32 bswap_32bit (u32 in) {
 	return out;
 }
 
-void apply_keycode (u32 modulo) {
+ITCM_CODE void apply_keycode (u32 modulo) {
 	u32 scratch[2];
 	int i;
 	modulo = modulo / sizeof(*keycode);
@@ -98,7 +98,7 @@ void apply_keycode (u32 modulo) {
 	}
 }
 
-void init_keycode (u32 idcode, u32 level, u32 modulo, int iCardDevice) {
+ITCM_CODE void init_keycode (u32 idcode, u32 level, u32 modulo, int iCardDevice) {
 	tonccpy ((u8*)keybuf, (iCardDevice ? gEncrDataTwl : gEncrData), KEYSIZE);
 	keycode[0] = idcode;
 	keycode[1] = idcode/2;
@@ -110,3 +110,4 @@ void init_keycode (u32 idcode, u32 level, u32 modulo, int iCardDevice) {
 	keycode[2] = keycode[2] / 2;
 	if (level >= 3) apply_keycode (modulo);	// third apply (optional)
 }
+

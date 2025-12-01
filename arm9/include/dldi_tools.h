@@ -1,13 +1,13 @@
 #include <nds/arm9/dldi.h>
 
+typedef signed int addr_t;
+typedef unsigned char data_t;
+
 void dldiLoadFromBin (const u8 dldiAddr[]);
 void myDldiLoadFromFile (const char* filepath);
+void dldiRelocateBinary (data_t *binData, size_t dldiFileSize);
 
 void ntrCardReset();
 
-const DISC_INTERFACE *dldiGet(void) {
-	if(io_dldi_data->ioInterface.features & FEATURE_SLOT_GBA)sysSetCartOwner(BUS_OWNER_ARM9);
-	if(io_dldi_data->ioInterface.features & FEATURE_SLOT_NDS)sysSetCardOwner(BUS_OWNER_ARM9);
-	return &io_dldi_data->ioInterface;
-}
+const DISC_INTERFACE *dldiGet(void);
 
