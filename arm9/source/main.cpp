@@ -43,6 +43,7 @@
 #include "dldi_binaries.h"
 #include "launcherData.h"
 #include "tonccpy.h"
+#include "nrio_card.h"
 
 /*#define NDS_HEADER			0x02FFFE00
 #define NDS_HEADER_POKEMON	0x02FFF000
@@ -190,34 +191,61 @@ bool InitSlot1DLDI() {
 		dldiLoadFromBin(cyclods_dldi);
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ACEK", 4) || !memcmp(cartHeader->gameCode, "YCEP", 4) || !memcmp(cartHeader->gameCode, "AHZH", 4) || 
-			   !memcmp(cartHeader->gameCode, "CHPJ", 4) || !memcmp(cartHeader->gameCode, "ADLP", 4) ||
+			   !memcmp(cartHeader->gameCode, "CHPJ", 4) || !memcmp(cartHeader->gameCode, "ADLP", 4) || !memcmp(cartHeader->gameCode, "YF7E", 4) ||
+			   !memcmp(cartHeader->gameCode, "AL3K", 4) || !memcmp(cartHeader->gameCode, "ALXE", 4) ||
 			   !memcmp(cartHeader->gameTitle, "QMATETRIAL", 10) || !memcmp(cartHeader->gameTitle, "R4DSULTRA", 9) // R4iDSN/R4 Ultra
 	) {
-		dldiLoadFromBin(ak2_dldi);
-		return true;
-	} else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
-		dldiLoadFromBin(m3ds_dldi);
+		if (!memcmp(cartHeader->gameCode, "YF7E", 4) || !memcmp(cartHeader->gameCode, "AL3K", 4)) {
+			dldiLoadFromBin(ak2cmd24_dldi);
+		} else {
+			dldiLoadFromBin(ak2_dldi);
+		}
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ABJJ", 4)) {
 		dldiLoadFromBin(ez5n_dldi);
 		return true;
-	} else if (!memcmp(cartHeader->gameCode, "AL3E", 4)) {
-		dldiLoadFromBin(acep_dldi);
+	} else if (!memcmp(cartHeader->gameCode, "AOUJ", 4)) {
+		dldiLoadFromBin(r4idsn_dldi);
 		return true;
-	/*} else if (!memcmp(cartHeader->gameCode, "ALXX", 4)) {
-		dldiLoadFromBin(ds2_dldi);
-		return true;*/
 	} else if (!memcmp(cartHeader->gameCode, "TTDS", 4) || !memcmp(cartHeader->gameCode, "R4GD", 4) || !memcmp(cartHeader->gameCode, "YQNY", 4) || 
 			   !memcmp(cartHeader->gameCode, "ALXX", 4) || !memcmp(cartHeader->gameCode, "AWUP", 4) || !memcmp(cartHeader->gameCode, "ABXK", 4) ||
+			   !memcmp(cartHeader->gameCode, "YS8E", 4) ||
 			   !memcmp(cartHeader->gameTitle, "20130628ver", 11)
 			) {
-		if (memcmp(cartHeader->gameCode, "TTDS", 4) && memcmp(cartHeader->gameCode, "YQNY", 4) && memcmp(cartHeader->gameCode, "AWUP", 4)) {
+		if (memcmp(cartHeader->gameCode, "TTDS", 4) && memcmp(cartHeader->gameCode, "YQNY", 4) && 
+			memcmp(cartHeader->gameCode, "AWUP", 4) && memcmp(cartHeader->gameCode, "YS8E", 4)
+			) {
 			ResetSlot();
 			cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
 		}
 		dldiLoadFromBin(ttio_dldi);
 		return true;
-	}
+	} else if (!memcmp(cartHeader->gameCode, "####", 4)) {
+		dldiLoadFromBin(scds_dldi);
+		return true;
+	} else if (!memcmp(cartHeader->gameCode, "DSGB", 4)) {
+		InitCartNandReadMode((u32)(*(u32*)(InitialCartHeaderTWL + 0x08)));
+		tonccpy((u8*)0x027FFE00, (u8*)InitialCartHeaderTWL, 0x200);
+		dldiLoadFromBin(nrio_dldi);
+		return true;
+	}/*else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
+		tonccpy((u8*)0x027FFE00, (u8*)InitialCartHeaderTWL, 0x200);
+		dldiLoadFromBin(m3ds_dldi);
+		return true;
+	} else if (!memcmp(cartHeader->gameCode, "AMFE", 4) || !memcmp(cartHeader->gameCode, "ANPE", 4) || !memcmp(cartHeader->gameCode, "CHPJ", 4)) {
+		dldiLoadFromBin(m3i_dldi);
+		return true;*
+	} else if (!memcmp(cartHeader->gameCode, "ASQE", 4)) {
+		dldiLoadFromBin(mati_dldi);
+		return true;
+	} else if (!memcmp(cartHeader->gameCode, "AL3E", 4)) {
+		dldiLoadFromBin(acep_dldi);
+		return true;
+	} else if (!memcmp(cartHeader->gameCode, "ALXX", 4)) {
+		dldiLoadFromBin(ds2_dldi);
+		return true;
+	}*/
+		
 	return false;
 }
 

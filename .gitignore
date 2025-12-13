@@ -9,6 +9,7 @@
 *.zip
 *.app
 *.dldi
+DLDI
 arm7/build
 arm9/build
 bootloader/build

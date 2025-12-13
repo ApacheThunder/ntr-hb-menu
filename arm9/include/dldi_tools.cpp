@@ -30,10 +30,10 @@
 #include "tonccpy.h"
 #include "dldi_tools.h"
 
-ITCM_CODE static addr_t readAddr (data_t *mem, addr_t offset) { return ((addr_t*)mem)[offset/sizeof(addr_t)]; }
-ITCM_CODE static void writeAddr (data_t *mem, addr_t offset, addr_t value) { ((addr_t*)mem)[offset/sizeof(addr_t)] = value; }
+static addr_t readAddr (data_t *mem, addr_t offset) { return ((addr_t*)mem)[offset/sizeof(addr_t)]; }
+static void writeAddr (data_t *mem, addr_t offset, addr_t value) { ((addr_t*)mem)[offset/sizeof(addr_t)] = value; }
 
-DTCM_DATA ALIGN(4) u32* dldiAddr = new u32[0x8000/sizeof(u32)];
+ALIGN(4) u32* dldiAddr = new u32[0x8000/sizeof(u32)];
 
 enum DldiOffsets {
 	DO_magicString = 0x00,			// "\xED\xA5\x8D\xBF Chishm"
@@ -67,7 +67,7 @@ enum DldiOffsets {
 	DO_code = 0x80
 };
 
-ITCM_CODE void ntrCardReset() {
+void ntrCardReset() {
 	if (isDSiMode()) {
 		// Reset card slot
 		disableSlot1();
@@ -77,7 +77,7 @@ ITCM_CODE void ntrCardReset() {
 	}
 }
 
-ITCM_CODE void dldiRelocateBinary (data_t *binData, size_t dldiFileSize) {
+void dldiRelocateBinary (data_t *binData, size_t dldiFileSize) {
 	addr_t memOffset;			// Offset of DLDI after the file is loaded into memory
 	addr_t relocationOffset;	// Value added to all offsets within the patch to fix it properly
 	addr_t ddmemOffset;			// Original offset used in the DLDI file
@@ -158,7 +158,7 @@ ITCM_CODE void dldiRelocateBinary (data_t *binData, size_t dldiFileSize) {
 	}
 }
 
-ITCM_CODE void dldiLoadFromBin (const u8 dldiAddr[]) {
+void dldiLoadFromBin (const u8 dldiAddr[]) {
 	// Check that it is a valid DLDI
 	if (!dldiIsValid ((DLDI_INTERFACE*)dldiAddr))return;
 
@@ -177,7 +177,7 @@ ITCM_CODE void dldiLoadFromBin (const u8 dldiAddr[]) {
 	dldiRelocateBinary ((data_t*)dldiAddr, dldiSize);
 }
 
-ITCM_CODE void myDldiLoadFromFile (const char* filepath) {
+void myDldiLoadFromFile (const char* filepath) {
 	FILE* file = fopen(filepath, "rb");
 	fread(dldiAddr, 1, 0x8000, file);
 	fclose(file);
@@ -201,7 +201,7 @@ ITCM_CODE void myDldiLoadFromFile (const char* filepath) {
 	delete[] dldiAddr;
 }
 
-ITCM_CODE const DISC_INTERFACE *dldiGet(void) {
+const DISC_INTERFACE *dldiGet(void) {
 	if(io_dldi_data->ioInterface.features & FEATURE_SLOT_GBA)sysSetCartOwner(BUS_OWNER_ARM9);
 	if(io_dldi_data->ioInterface.features & FEATURE_SLOT_NDS)sysSetCardOwner(BUS_OWNER_ARM9);
 	return &io_dldi_data->ioInterface;
