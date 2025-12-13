@@ -55,11 +55,10 @@ int main(void) {
 		i2cWriteRegister(0x4A, 0x70, 0x01);	// Bootflag = Warmboot/SkipHealthSafety
 	}
 	
-	//	fifoWaitValue32(FIFO_USER_01);
-	// if (fifoCheckValue32(FIFO_USER_03))cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
-	// if (*(u32*)0x02000010 == 0xFFFFFFFF)cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
 	cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
+
 	fifoSendValue32(FIFO_USER_01, 1);
+	
 	swiWaitForVBlank();
 	// return WaitForArm9Check();
 	while(1)swiWaitForVBlank();

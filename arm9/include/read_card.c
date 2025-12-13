@@ -72,18 +72,19 @@ typedef union {	char title[4]; u32 key; } GameCode;
 static u32 secureArea[CARD_SECURE_AREA_SIZE/sizeof(u32)] = {0};
 static const u8 cardSeedBytes[] = { 0xE8, 0x4D, 0x5A, 0xB1, 0x17, 0x8F, 0x99, 0xD5 };
 
-ITCM_CODE void ResetSlot() {
-	// Reset card slot
-	if((REG_SCFG_MC != 0x11) && (REG_SCFG_MC != 0x10)) {
-		disableSlot1();
-		for(int i = 0; i < 20; i++)swiWaitForVBlank();
+/*ITCM_CODE void ResetSlot() {
+	if (REG_SCFG_MC != 0x10) {
+		REG_ROMCTRL = CARD_nRESET;
+		for(int i = 0; i < 5; i++)swiWaitForVBlank();
+		return;
 	}
+	// Reset card slot
 	enableSlot1();
 	while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
 	for(int i = 0; i < 5; i++)swiWaitForVBlank();
 	REG_ROMCTRL = CARD_nRESET;
 	for (int i = 0; i < 20; i++)swiWaitForVBlank();
-}
+}*/
 
 //---------------------------------------------------------------------------------
 // https://github.com/devkitPro/libnds/blob/105d4943dbac8f2bd99a47b22cd3ed48f96af083/source/common/card.c#L47-L62
@@ -327,27 +328,23 @@ ITCM_CODE u32 cardInit (sNDSHeaderExt* ndsHeader) {
 
 	sysSetCardOwner (BUS_OWNER_ARM9);	// Allow arm9 to access NDS cart
 	
-	if (isDSiMode()) {
-		ResetSlot();
-		// Dummy command sent after card reset
-		cardParamCommand (CARD_CMD_DUMMY, 0, CARD_ACTIVATE | CARD_nRESET | CARD_CLK_SLOW | CARD_BLK_SIZE(1) | CARD_DELAY1(0x1FFF) | CARD_DELAY2(0x3F), NULL, 0);
-		while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
-	}
-	
 	toncset(headerData, 0, 0x1000);
+	
+	// Dummy command sent after card reset
+	cardParamCommand (CARD_CMD_DUMMY, 0, CARD_ACTIVATE | CARD_nRESET | CARD_CLK_SLOW | CARD_BLK_SIZE(1) | CARD_DELAY1(0x1FFF) | CARD_DELAY2(0x3F), NULL, 0);
 
-	// Read the header
-	cardReadHeader((u8*)headerData);
-	
-	tonccpy(ndsHeader, headerData, 0x200);
-	
 	iCardId = cardReadID(CARD_CLK_SLOW);
 	while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
 	*(vu32*)InitialCartChipID = iCardId;
 	
 	normalChip = (iCardId & BIT(31)) != 0; // ROM chip ID MSB
 	nandChip = (iCardId & BIT(27)) != 0; // Card has a NAND chip
+
+	// Read the header
+	cardReadHeader((u8*)headerData);
 	
+	tonccpy(ndsHeader, headerData, 0x200);
+		
 	if ((ndsHeader->unitCode != 0) || (ndsHeader->dsi_flags != 0)) {
 		// Extended header found
 		if(normalChip) {
@@ -381,7 +378,9 @@ ITCM_CODE u32 cardInit (sNDSHeaderExt* ndsHeader) {
 	// Port 40001A4h setting for KEY1 commands   (usually 001808F8h)
 	portFlagsKey1 = (CARD_ACTIVATE | CARD_nRESET | (ndsHeader->cardControl13 & (CARD_WR|CARD_CLK_SLOW)) | ((ndsHeader->cardControlBF & (CARD_CLK_SLOW|CARD_DELAY1(0x1FFF))) + ((ndsHeader->cardControlBF & CARD_DELAY2(0x3F)) >> 16)));
 
+	
 	// Adjust card transfer method depending on the most significant bit of the chip ID
+	if((iCardId & 0x80000000) != 0)normalChip = 0xFFFF;		// ROM chip ID MSB
 	if (!normalChip)portFlagsKey1 |= CARD_SEC_LARGE;
 
 	// 3Ciiijjj xkkkkkxx - Activate KEY1 Encryption Mode

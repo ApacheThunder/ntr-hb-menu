@@ -54,21 +54,21 @@ u32 cardGetId() { return iCardId; }
 
 static const u8 cardSeedBytes[] = { 0xE8, 0x4D, 0x5A, 0xB1, 0x17, 0x8F, 0x99, 0xD5 };
 
-static void wait_vblanks(int num_vblanks) {
+/*static void wait_vblanks(int num_vblanks) {
 	for (int i = 0; i < num_vblanks; i++) { while (REG_VCOUNT!=191); while (REG_VCOUNT==191); }
 }
 
 static void ReadHeader(u8 *header) {
-	REG_ROMCTRL=0;
-	REG_AUXSPICNTH=0;
+	REG_ROMCTRL = 0;
+	REG_AUXSPICNTH = 0;
 	wait_vblanks(30);
-	REG_AUXSPICNTH=CARD_CR1_ENABLE|CARD_CR1_IRQ;
-	REG_ROMCTRL=CARD_nRESET|CARD_SEC_SEED;
-	while(REG_ROMCTRL&CARD_BUSY);
+	REG_AUXSPICNTH = (CARD_CR1_ENABLE | CARD_CR1_IRQ);
+	REG_ROMCTRL = (CARD_nRESET | CARD_SEC_SEED);
+	while (REG_ROMCTRL & CARD_BUSY);
 	cardReset();
-	while(REG_ROMCTRL&CARD_BUSY);
+	while (REG_ROMCTRL & CARD_BUSY);
 	cardParamCommand(CARD_CMD_HEADER_READ,0,CARD_ACTIVATE|CARD_nRESET|CARD_CLK_SLOW|CARD_BLK_SIZE(1)|CARD_DELAY1(0x1FFF)|CARD_DELAY2(0x3F),(u32*)header,512/4);
-}
+}*/
 
 
 static void decryptSecureArea (u32 gameCode, u32* secureArea, int iCardDevice) {
@@ -157,15 +157,13 @@ static void cardDelay (u16 readTimeout) {
 
 static void ResetSlot() {
 	// Reset card slot
-	if((REG_SCFG_MC != 0x11) && (REG_SCFG_MC != 0x10)) {
+	if(REG_SCFG_MC != 0x10) {
 		disableSlot1();
-		for(int i = 0; i < 20; i++)swiWaitForVBlank();
+		for(int i = 0; i < 30; i++)swiWaitForVBlank();
 	}
 	enableSlot1();
 	while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
-	for(int i = 0; i < 5; i++)swiWaitForVBlank();
-	REG_ROMCTRL = CARD_nRESET;
-	for (int i = 0; i < 20; i++)swiWaitForVBlank();
+	for(int i = 0; i < 30; i++)swiWaitForVBlank();
 }
 
 u16 cardInit (sNDSHeaderExt* ndsHeader) {
@@ -176,29 +174,23 @@ u16 cardInit (sNDSHeaderExt* ndsHeader) {
 	u8 cmdData[8] __attribute__ ((aligned));
 	GameCode* gameCode;
 	
-	SetCardOwner(false);
-	
 	if (REG_SCFG_MC == 0x11)return ERR_NONE;
 	
-	if (REG_SCFG_MC == 0x10) {
-		enableSlot1();
-		while(REG_ROMCTRL & CARD_BUSY)swiWaitForVBlank();
-		for(int i = 0; i < 5; i++)swiWaitForVBlank();
-		REG_ROMCTRL = CARD_nRESET;
-		for (int i = 0; i < 20; i++)swiWaitForVBlank();
-	}
-	
-	// ResetSlot();
-	
-	// Dummy command sent after card reset
-	cardParamCommand (CARD_CMD_DUMMY, 0, CARD_ACTIVATE | CARD_nRESET | CARD_CLK_SLOW | CARD_BLK_SIZE(1) | CARD_DELAY1(0x1FFF) | CARD_DELAY2(0x3F), NULL, 0);
+	SetCardOwner(false);
+
+	ResetSlot();
 
 	// Verify that the ndsHeader is packed correctly, now that it's no longer __packed__
 	static_assert(sizeof(tNDSHeader) == 0x160, "tNDSHeader not packed properly");
+	
+	// 1st Get ROM Chip ID
+	iCardId = cardReadID(CARD_CLK_SLOW);
+	while (REG_ROMCTRL & CARD_BUSY);
 
+	
 	// Read the header
-	// cardReadHeader((u8*)ndsHeader);
-	ReadHeader((u8*)headerData);
+	cardReadHeader((u8*)ndsHeader);
+	// ReadHeader((u8*)headerData);
 	
 	tonccpy(ndsHeader, headerData, 0x200);
 		
@@ -214,11 +206,6 @@ u16 cardInit (sNDSHeaderExt* ndsHeader) {
 		}
 		tonccpy(ndsHeader, headerData, 0x1000);
 	}
-	
-	// 1st Get ROM Chip ID
-	iCardId = cardReadID(CARD_CLK_SLOW);
-	while (REG_ROMCTRL & CARD_BUSY);
-	
 	
 	// Initialise blowfish encryption for KEY1 commands and decrypting the secure area
 	gameCode = (GameCode*)ndsHeader->gameCode;
