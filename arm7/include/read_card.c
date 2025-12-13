@@ -182,12 +182,7 @@ u16 cardInit (sNDSHeaderExt* ndsHeader) {
 
 	// Verify that the ndsHeader is packed correctly, now that it's no longer __packed__
 	static_assert(sizeof(tNDSHeader) == 0x160, "tNDSHeader not packed properly");
-	
-	// 1st Get ROM Chip ID
-	iCardId = cardReadID(CARD_CLK_SLOW);
-	while (REG_ROMCTRL & CARD_BUSY);
 
-	
 	// Read the header
 	cardReadHeader((u8*)ndsHeader);
 	// ReadHeader((u8*)headerData);
@@ -216,6 +211,10 @@ u16 cardInit (sNDSHeaderExt* ndsHeader) {
 	// Port 40001A4h setting for KEY1 commands   (usually 001808F8h)
 	portFlagsKey1 = CARD_ACTIVATE | CARD_nRESET | (ndsHeader->cardControl13 & (CARD_WR|CARD_CLK_SLOW)) | ((ndsHeader->cardControlBF & (CARD_CLK_SLOW|CARD_DELAY1(0x1FFF))) + ((ndsHeader->cardControlBF & CARD_DELAY2(0x3F)) >> 16));
 	
+	// 1st Get ROM Chip ID
+	iCardId = cardReadID(CARD_CLK_SLOW);
+	while (REG_ROMCTRL & CARD_BUSY);
+
 	// Adjust card transfer method depending on the most significant bit of the chip ID
 	if((iCardId & 0x80000000) != 0)normalChip = 0xFFFF;		// ROM chip ID MSB
 	if (normalChip == 0)portFlagsKey1 |= CARD_SEC_LARGE;

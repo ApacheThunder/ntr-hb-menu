@@ -204,10 +204,17 @@ bool InitSlot1DLDI() {
 	} else if (!memcmp(cartHeader->gameCode, "AL3E", 4)) {
 		dldiLoadFromBin(acep_dldi);
 		return true;
-	} else if (!memcmp(cartHeader->gameCode, "ALXX", 4)) {
+	/*} else if (!memcmp(cartHeader->gameCode, "ALXX", 4)) {
 		dldiLoadFromBin(ds2_dldi);
-		return true;
-	} else if (!memcmp(cartHeader->gameCode, "TTDS", 4) || !memcmp(cartHeader->gameCode, "R4GD", 4) || !memcmp(cartHeader->gameTitle, "20130628ver", 11)) {
+		return true;*/
+	} else if (!memcmp(cartHeader->gameCode, "TTDS", 4) || !memcmp(cartHeader->gameCode, "R4GD", 4) || !memcmp(cartHeader->gameCode, "YQNY", 4) || 
+			   !memcmp(cartHeader->gameCode, "ALXX", 4) || !memcmp(cartHeader->gameCode, "AWUP", 4) || !memcmp(cartHeader->gameCode, "ABXK", 4) ||
+			   !memcmp(cartHeader->gameTitle, "20130628ver", 11)
+			) {
+		if (memcmp(cartHeader->gameCode, "TTDS", 4) && memcmp(cartHeader->gameCode, "YQNY", 4) && memcmp(cartHeader->gameCode, "AWUP", 4)) {
+			ResetSlot();
+			cardInit((sNDSHeaderExt*)InitialCartHeaderTWL);
+		}
 		dldiLoadFromBin(ttio_dldi);
 		return true;
 	}
