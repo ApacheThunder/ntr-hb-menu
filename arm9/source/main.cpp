@@ -192,7 +192,7 @@ bool InitSlot1DLDI() {
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ACEK", 4) || !memcmp(cartHeader->gameCode, "YCEP", 4) || !memcmp(cartHeader->gameCode, "AHZH", 4) || 
 			   !memcmp(cartHeader->gameCode, "CHPJ", 4) || !memcmp(cartHeader->gameCode, "ADLP", 4) || !memcmp(cartHeader->gameCode, "YF7E", 4) ||
-			   !memcmp(cartHeader->gameCode, "AL3K", 4) || !memcmp(cartHeader->gameCode, "ALXE", 4) ||
+			   !memcmp(cartHeader->gameCode, "AL3K", 4) || !memcmp(cartHeader->gameCode, "AL3P", 4) ||!memcmp(cartHeader->gameCode, "ALXE", 4) ||
 			   !memcmp(cartHeader->gameTitle, "QMATETRIAL", 10) || !memcmp(cartHeader->gameTitle, "R4DSULTRA", 9) // R4iDSN/R4 Ultra
 	) {
 		if (!memcmp(cartHeader->gameCode, "YF7E", 4) || !memcmp(cartHeader->gameCode, "AL3K", 4)) {
@@ -228,16 +228,16 @@ bool InitSlot1DLDI() {
 		tonccpy((u8*)0x027FFE00, (u8*)InitialCartHeaderTWL, 0x200);
 		dldiLoadFromBin(nrio_dldi);
 		return true;
-	}/*else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
+	} /* else if (!memcmp(cartHeader->gameCode, "ASQE", 4)) {
+		dldiLoadFromBin(ez5i_dldi);
+		return true;
+	} else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
 		tonccpy((u8*)0x027FFE00, (u8*)InitialCartHeaderTWL, 0x200);
 		dldiLoadFromBin(m3ds_dldi);
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "AMFE", 4) || !memcmp(cartHeader->gameCode, "ANPE", 4) || !memcmp(cartHeader->gameCode, "CHPJ", 4)) {
 		dldiLoadFromBin(m3i_dldi);
 		return true;*
-	} else if (!memcmp(cartHeader->gameCode, "ASQE", 4)) {
-		dldiLoadFromBin(mati_dldi);
-		return true;
 	} else if (!memcmp(cartHeader->gameCode, "AL3E", 4)) {
 		dldiLoadFromBin(acep_dldi);
 		return true;

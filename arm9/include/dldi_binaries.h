@@ -12,9 +12,11 @@ extern unsigned char r4idsn_dldi[];
 extern unsigned char cyclods_dldi[];
 extern unsigned char nrio_dldi[];
 
+
 // extern unsigned char acep_dldi[];
-// extern unsigned char m3ds_dldi[];
 // extern unsigned char mati_dldi[];
+// extern unsigned char ez5i_dldi[];
+// extern unsigned char m3ds_dldi[];
 // extern unsigned char m3i_dldi[];
 // extern unsigned char ds2_dldi[];
 
