@@ -52,12 +52,12 @@
 using namespace std;
 
 volatile int err = 0;
+
 volatile bool GUIINIT = false;
 volatile bool usingSD = false;
 volatile bool slot1Available = false;
 volatile bool dsiSDAvailable = false;
-
-const bool autoBoot = true;
+volatile bool autoBoot = true;
 
 void InitGUI (void) {
 	if (GUIINIT)return;
@@ -184,11 +184,20 @@ bool InitSlot1DLDI() {
 	
 	sNDSHeaderExt* cartHeader = (sNDSHeaderExt*)InitialCartHeaderTWL;
 	
-	if (!memcmp(cartHeader->gameCode, "ASMA", 4)) {
+	if (!memcmp(cartHeader->gameCode, "DSPI", 4) || !memcmp(cartHeader->gameCode, "NTRJ", 4)) { // DSpico
+		autoBoot = false;
+		dldiLoadFromBin(pico_dldi);
+		picoInit(false);
+		return true;
+	} else if (!memcmp(cartHeader->gameCode, "ASMA", 4)) {
 		if (!memcmp(cartHeader->gameTitle, "MEDIAPLAYER", 11)) { dldiLoadFromBin(gmtf_dldi); } else { dldiLoadFromBin(r4tf_dldi); }
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ASME", 4)) {
-		dldiLoadFromBin(cyclods_dldi);
+		if (!memcmp(cartHeader->gameTitle, "EDGE_", 5)) {
+			dldiLoadFromBin(edge_dldi);
+		} else {
+			dldiLoadFromBin(cyclods_dldi);
+		}
 		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ACEK", 4) || !memcmp(cartHeader->gameCode, "YCEP", 4) || !memcmp(cartHeader->gameCode, "AHZH", 4) || 
 			   !memcmp(cartHeader->gameCode, "CHPJ", 4) || !memcmp(cartHeader->gameCode, "ADLP", 4) || !memcmp(cartHeader->gameCode, "YF7E", 4) ||
@@ -228,10 +237,10 @@ bool InitSlot1DLDI() {
 		tonccpy((u8*)0x027FFE00, (u8*)InitialCartHeaderTWL, 0x200);
 		dldiLoadFromBin(nrio_dldi);
 		return true;
-	} /* else if (!memcmp(cartHeader->gameCode, "ASQE", 4)) {
+	} else if (!memcmp(cartHeader->gameCode, "ASQE", 4)) {
 		dldiLoadFromBin(ez5i_dldi);
 		return true;
-	} else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
+	} /* else if (!memcmp(cartHeader->gameCode, "AMFE", 4)) {
 		tonccpy((u8*)0x027FFE00, (u8*)InitialCartHeaderTWL, 0x200);
 		dldiLoadFromBin(m3ds_dldi);
 		return true;

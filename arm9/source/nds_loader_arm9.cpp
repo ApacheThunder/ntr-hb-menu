@@ -31,8 +31,6 @@
 
 #include "nds_loader_arm9.h"
 #include "tonccpy.h"
-#include "read_card.h"
-#include "launcherData.h"
 
 #define DEVICE_TYPE_DLDI 0x49444C44
 #define FIX_ALL		0x01

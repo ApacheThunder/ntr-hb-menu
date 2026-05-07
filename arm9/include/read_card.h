@@ -41,6 +41,8 @@ extern u32 cardNandRwStart;
 
 void ResetSlot();
 
+void picoInit(bool irq);
+
 u32 cardInit (sNDSHeaderExt* ndsHeader);
 u32 cardInitShort(sNDSHeaderExt* ndsHeader);
 
