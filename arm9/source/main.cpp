@@ -199,6 +199,9 @@ bool InitSlot1DLDI() {
 			dldiLoadFromBin(cyclods_dldi);
 		}
 		return true;
+	} else if (!memcmp(cartHeader->gameCode, "VCKE", 4) || !memcmp(cartHeader->gameCode, "AEAE", 4)) {
+		dldiLoadFromBin(cycloievo_dldi);
+		return true;
 	} else if (!memcmp(cartHeader->gameCode, "ACEK", 4) || !memcmp(cartHeader->gameCode, "YCEP", 4) || !memcmp(cartHeader->gameCode, "AHZH", 4) || 
 			   !memcmp(cartHeader->gameCode, "CHPJ", 4) || !memcmp(cartHeader->gameCode, "ADLP", 4) || !memcmp(cartHeader->gameCode, "YF7E", 4) ||
 			   !memcmp(cartHeader->gameCode, "AL3K", 4) || !memcmp(cartHeader->gameCode, "AL3P", 4) ||!memcmp(cartHeader->gameCode, "ALXE", 4) ||

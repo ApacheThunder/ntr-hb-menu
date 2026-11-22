@@ -12,6 +12,7 @@ extern unsigned char ez5n_dldi[];
 extern unsigned char ez5i_dldi[];
 extern unsigned char r4idsn_dldi[];
 extern unsigned char cyclods_dldi[];
+extern unsigned char cycloievo_dldi[];
 extern unsigned char edge_dldi[];
 extern unsigned char nrio_dldi[];
 
